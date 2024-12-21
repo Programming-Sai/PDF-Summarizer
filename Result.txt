@@ -1,0 +1,19 @@
+
+For a computer to start running —for instance, when it is
+sebooted it heeds fo have a inal progsab o un. This ial progam,
+tr booltap pros, tends tbe ample. Typically. its sored Within
+the computer hardware in read-only memory (ROM) or elcecallv erasable
+programmable sead-only memory {C2°R0MD, known by the general eh
+{moeare Unitas ll arpects ofthe sytem trom CPU registers to device
+contolerstomemnory conten Theboottappropammust aw how tlaad
+the operating system and how to start execling that system, To accomplish
+
+‘ocrcrist.s Mobile operating systems often include not only a core kernel
+but also middleware—a set of software frameworks that provide additional
+‘evicesitorappliaianidavelopers For example, ach of the (HOBOSEBEBIE
+‘ent mobile operating systems— Apple's ios and Google's Androld-—features
+‘core Kernel alongwith middleware thal supports databases, multimedia. and
+‘raphe to name a only few)
+
+
+“Amodeen computer systern.
