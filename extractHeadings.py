@@ -4,7 +4,7 @@
 import fitz  # PyMuPDF
 
 # Open the PDF
-pdf_document = fitz.open("test_pdfs/page_28.pdf")
+pdf_document = fitz.open("test_pdfs/page_31.pdf")
 
 # Initialize an empty string to collect all the text
 text = ""
@@ -49,7 +49,7 @@ def getHaedings(paragraphs):
         for i in range(len(new_line_split)):
             if new_line_split[i] in two_prefixes or new_line_split[i] in three_prefixes:
                 if i+1 <= len(new_line_split):
-                    headings.append(new_line_split[i+1])
+                    headings.append(new_line_split[i] + " " + new_line_split[i+1])
     return set(headings)
 
 print(getHaedings(paragraphs))
