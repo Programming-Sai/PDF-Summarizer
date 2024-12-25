@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 from pytesseract import pytesseract
+import re
+import fitz
+
 
 
 
@@ -41,7 +44,7 @@ def getContours(img, imgDraw, showCanny=False, minArea=1000, filter=0, cThr=[100
             else:
                 finalContours.append([len(approx), area, approx, bbox, i])
 
-    finalContours = sorted(finalContours, key=lambda x: x[1], reverse=True)
+    finalContours = sorted(finalContours, key=lambda x: x[3][1])
 
     if draw:
         for con in finalContours:
@@ -82,6 +85,40 @@ def detectImages(img):
     return imgContours, imageRegions
 
 
+def contains_number_pattern(string, caption=False):
+    # Pattern for captions: "Some things_Figure *.* Some other things"
+    caption_pattern = r".*Figure \d+\.\d+(\.\d+)?(.*)"
+    
+    # Pattern for non-captions: "___*.*___" or "___*.*.*___"
+    general_pattern = r".*\d+\.\d+(\.\d+)?.*"
+    
+    if caption:
+        # Check if the string matches the pattern "Some things_Figure *.* Some other things"
+        if re.match(caption_pattern, string.replace("\n", " ")):  # Replace newlines with spaces for easier matching
+            return True
+        else:
+            return False
+    if not re.search(r".* Figure \d+\.\d+(\.\d+)?", string):
+        # Check for non-captions that have format "___*.*___" or "___*.*.*___"
+        if re.search(general_pattern, string.replace("\n", " ")):  # Replace newlines with spaces for easier matching
+            return True
+    return False
+
+
+def getTextFromPDFAsParagraphs(doc):
+    text = ""
+
+    # Loop through all the pages in the PDF
+    for page_num in range(doc.page_count):
+        page = doc.load_page(page_num)
+        text += page.get_text()
+
+    # Split the text into paragraphs by newlines
+    paragraphs = text.split('. ')
+
+    # Optionally, you can further process paragraphs if needed
+    paragraphs = [p.strip() for p in paragraphs if p.strip()]
+    return paragraphs
 
 
 def getRoi(img, contours):

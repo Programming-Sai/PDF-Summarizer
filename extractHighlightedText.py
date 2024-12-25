@@ -42,7 +42,7 @@ def getHighlightesText(img_path, show_process=False, show_result_image=True, sav
     cv2.waitKey(0)
 
 
-    return highlightedText
+    return highlightedText, "\n\n\n" #,roiList
 
 
 
