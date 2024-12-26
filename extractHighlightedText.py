@@ -1,10 +1,7 @@
 from utils import *
 
 
-# path = '/Users/mac/Desktop/PDF-Summarizer/images/page_29.png'
-# path = '/Users/mac/Desktop/PDF-Summarizer/images/page_41.png'
-# path = '/Users/mac/Desktop/PDF-Summarizer/images/page_28.png'
-path = '/Users/mac/Desktop/PDF-Summarizer/images/page_31.png'
+
 
 
 def getHighlightedText(doc, page_number, image, show_process=False, show_result_image=True, save_extracted_text=True):

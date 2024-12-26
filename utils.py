@@ -1,10 +1,22 @@
 import cv2
+import os
 import numpy as np
-from pytesseract import pytesseract
 import re
 import fitz
 from PIL import Image
 import io
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.platypus import Image as Img
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+import time
+import shutil
+import threading
+
 
 
 
@@ -56,62 +68,6 @@ def getContours(img, imgDraw, showCanny=False, minArea=1000, filter=0, cThr=[100
 
 
 
-def detectImages(img):
-    # Convert to grayscale
-    imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Apply edge detection
-    edges = cv2.Canny(imgGray, 50, 150)
-
-    # Dilate edges to connect nearby components
-    kernel = np.ones((5, 5), np.uint8)
-    imgDilated = cv2.dilate(edges, kernel, iterations=1)
-
-    # Find contours
-    contours, _ = cv2.findContours(imgDilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    imgContours = img.copy()
-    imageRegions = []
-
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area > 1000:  # Adjust the area threshold based on your use case
-            x, y, w, h = cv2.boundingRect(contour)
-            aspectRatio = w / float(h)
-
-            # Filter based on aspect ratio or size if needed
-            if 0.5 < aspectRatio < 3:  # Adjust aspect ratio range
-                cv2.rectangle(imgContours, (x, y), (x + w, y + h), (255, 0, 255), 2)
-                imageRegions.append(img[y:y+h, x:x+w])  # Crop image regions
-
-    return imgContours, imageRegions
-
-
-def contains_number_pattern(string, caption=False):
-    caption_pattern = r".*\bFigure \d+\.\d+(\.\d+)?\b.*"  # Matches figure references like "Figure 1.1"
-    general_pattern = r"^\s*\d+\.\d+(\.\d+)?\b.*"  # Matches valid headings (e.g., "1.1 Introduction")
-
-    string = string.replace("\n", " ")  # Normalize string for pattern matching
-
-    if caption:
-        # Check for caption pattern
-        return bool(re.match(caption_pattern, string))
-
-    # Exclude figure references
-    if not re.search(caption_pattern, string):
-        # Check for general heading pattern
-        return bool(re.match(general_pattern, string))
-
-    return False
-
-
-def getTextFromPDFAsParagraphs(doc, page_number):
-    text = doc.load_page(page_number-1).get_text()
-    paragraphsForNormal = [i.replace("\n", " ").strip() for i in text.split('. ') if i.replace("\n", " ").strip()]
-    paragraphsForHeadings = [i.strip() for i in text.split('. ') if i.strip()]
-    return paragraphsForNormal, paragraphsForHeadings
-
-
 def getRoi(contours):
     roiList = []
     for con in contours:
@@ -140,18 +96,6 @@ def saveText(highlightedText, result_name):
         for text in highlightedText:
             f.writelines(f'\n{text}')
 
-
-def preprocess_image(image):
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Apply thresholding to enhance text
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # Denoise the image
-    denoised = cv2.medianBlur(thresh, 3)
-
-    return denoised
 
 
 def stackImages(scale, imgArray):
@@ -258,4 +202,355 @@ def save_image(image, output_image_path):
         print(f"Image saved to {output_image_path}")
     else:
         print("No image to save.")
+
+
+
+def save_to_pdf(results, filename, images_folder_path='images/images', clear_after_wards=True):
+    # Create the PDF document
+    doc = SimpleDocTemplate(filename, pagesize=letter)
+    elements = []
+
+    # Get default styles
+    styles = getSampleStyleSheet()
+
+    # Custom Heading style (using a large font and bold)
+    heading_style = ParagraphStyle(
+        name="Heading1",
+        parent=styles["Heading1"],
+        fontName="Helvetica-Bold",
+        fontSize=15,
+        textColor=colors.darkblue,
+        spaceAfter=12,
+        alignment=0,  # Left Centered ?
+    )
+
+    bullet_style = ParagraphStyle(
+        name="Bullet",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=12,
+        textColor=colors.black,
+        spaceAfter=10,
+        bulletFontName="Helvetica",
+        bulletFontSize=50,
+        bulletColor=colors.black,
+        leftIndent=25,
+        bulletSymbol="◉",
+    )
+
+    # Iterate over the results and add them as paragraphs
+    i = 0
+    while i < len(results):
+        item = results[i]
+
+        # Check if the item is a heading or normal text
+        if "#######" in item:
+            heading = item.split("#######")[1].split("##############")[0].strip()
+            elements.append(Paragraph(heading, heading_style))
+        else:
+            # Handle Image Embedding
+            if os.path.isfile(item):
+                # Embed the image
+                img_path = item
+                img_width = 200
+                img_height = 200
+                img = Img(img_path, width=img_width, height=img_height)  # Correct way to instantiate Image class
+                elements.append(img)
+
+                # Check if the next line is a caption for the image
+                if i + 1 < len(results) and "Figure" in results[i + 1]:
+                    caption = results[i + 1]
+                    caption_style = getSampleStyleSheet()["Normal"]
+                    elements.append(Paragraph(f"<i>{caption}</i>", caption_style))
+                    i += 1  # Skip the next item since it's the caption
+
+            elif item == "\n\n==============================================================\n\n":
+                elements.append(Spacer(1, 12))  # Adds space before the line
+
+                # Add a horizontal line
+                line = HRFlowable(width="100%", color=colors.black, thickness=1)
+                elements.append(line)
+                elements.append(Spacer(1, 12))  # Add space after the line
+            elif re.match(r"^Page \d+:$", item):
+                create_header_footer(elements, item)
+            elif re.match(r"\n\nOriginal Text Length \d+\n' {6}\| {6}\nHighlighted Text Count: \d+", item):
+                create_header_footer(elements, item, is_footer=True)
+            else:
+                # Add bullet points or other text
+                elements.append(Paragraph(f"◉   {item}", bullet_style))
+
+        i += 1
+
+    # Build the PDF
+    doc.build(elements)
+
+    # Optional: Clear the images folder if specified
+    if clear_after_wards:
+        clear_images_folder(images_folder_path)
+
+
+def detectImages(img):
+    # Convert to grayscale
+    imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Apply edge detection
+    edges = cv2.Canny(imgGray, 50, 150)
+
+    # Dilate edges to connect nearby components
+    kernel = np.ones((5, 5), np.uint8)
+    imgDilated = cv2.dilate(edges, kernel, iterations=1)
+
+    # Find contours
+    contours, _ = cv2.findContours(imgDilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    imgContours = img.copy()
+    imageRegions = []
+
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 1000:  # Adjust the area threshold based on your use case
+            x, y, w, h = cv2.boundingRect(contour)
+            aspectRatio = w / float(h)
+
+            # Filter based on aspect ratio or size if needed
+            if 0.5 < aspectRatio < 3:  # Adjust aspect ratio range
+                cv2.rectangle(imgContours, (x, y), (x + w, y + h), (255, 0, 255), 2)
+                imageRegions.append(img[y:y+h, x:x+w])  # Crop image regions
+
+    return imgContours, imageRegions
+
+
+
+def contains_number_pattern(string, caption=False):
+    caption_pattern = r".*\bFigure \d+\.\d+(\.\d+)?\b.*"  # Matches figure references like "Figure 1.1"
+    general_pattern = r"^\s*\d+\.\d+(\.\d+)?\b.*"  # Matches valid headings (e.g., "1.1 Introduction")
+
+    string = string.replace("\n", " ")  # Normalize string for pattern matching
+
+    if caption:
+        # Check for caption pattern
+        return bool(re.match(caption_pattern, string))
+
+    # Exclude figure references
+    if not re.search(caption_pattern, string):
+        # Check for general heading pattern
+        return bool(re.match(general_pattern, string))
+
+    return False
+
+
+
+def getTextFromPDFAsParagraphs(doc, page_number):
+    text = doc.load_page(page_number-1).get_text()
+    paragraphsForNormal = [i.replace("\n", " ").strip() for i in text.split('. ') if i.replace("\n", " ").strip()]
+    paragraphsForHeadings = [i.strip() for i in text.split('. ') if i.strip()]
+    return paragraphsForNormal, paragraphsForHeadings
+
+
+
+def displayResult(title, iterable):
+    print(f"\n\n\n\n\n\n\n\n{title}: \n\n")
+    for i in iterable: 
+        print(i, end="\n\n")
+
+
+
+def get_count(iterable, counter):
+    for i in iterable:
+        counter += len(i)
+    return counter
+
+
+
+def create_header_footer(elements, item, is_footer=False, page_width=letter[0], page_height=letter[1]):
+    # If it's a header or a footer
+    header_style = ParagraphStyle(
+        name="Header",
+        fontName="Courier",
+        fontSize=10,
+        textColor=colors.grey,
+        spaceAfter=6,
+        alignment=0
+    )
+
+    footer_style = ParagraphStyle(
+        name="Footer",
+        fontName="Courier",
+        fontSize=10,
+        textColor=colors.grey,
+        spaceBefore=6,
+        alignment=2
+    )
+    
+    if is_footer:
+        # Add footer with page number or other footer text
+        elements.append(Spacer(1, 12))  # Spacer before footer
+        elements.append(Paragraph(item, footer_style))  
+        elements.append(Spacer(1, 12))  
+
+    else:
+        # Add header
+        elements.append(Spacer(1, 12))  
+        elements.append(Paragraph(item, header_style))  
+        elements.append(Spacer(1, 12))  
+
+
+
+
+# Function to load images from a folder
+def load_images_from_folder(folder):
+    images = []
+    paths = []
+    for filename in os.listdir(folder):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+            img_path = os.path.join(folder, filename)
+            img = cv2.imread(img_path)
+            if img is not None:
+                images.append(img)
+                paths.append(img_path)
+    return images, paths
+
+
+
+
+# Mouse callback function to handle clicks
+def mouse_callback(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        grid_coords = param["grid_coords"]
+        img_paths = param["img_paths"]
+        close_flag = param["close_flag"]
+        pdf_image_path = param["pdf_image_path"]
+        for (row, col, path) in grid_coords:
+            if row[0] <= y <= row[1] and col[0] <= x <= col[1]:
+                print(f"Clicked on image: {path}")
+                pdf_image_path = path  # Update the pdf_image_path
+                close_flag = True  # Set close flag to True
+
+        param["close_flag"] = close_flag
+        param["pdf_image_path"] = pdf_image_path
+
+
+
+
+# Function to display images in a grid
+def display_images_grid(images, paths, window_name="Image Grid", cell_size=(200, 200), padding=10, close_image_window=False, pdf_image_path=''):
+    rows = int(np.ceil(len(images) ** 0.5))  # Determine grid size
+    cols = rows
+
+    grid_height = rows * cell_size[1] + (rows - 1) * padding
+    grid_width = cols * cell_size[0] + (cols - 1) * padding
+
+    background_color = (75, 0, 130)  # RGB for light blue
+    grid_img = np.full((grid_height, grid_width, 3), background_color, dtype=np.uint8)
+
+
+    # grid_img = np.ones((grid_height, grid_width, 3), dtype=np.uint8) * 255  # White background for grid
+
+    grid_coords = []  # List to store the coordinates for each image cell
+    for idx, img in enumerate(images):
+        resized_img = cv2.resize(img, cell_size)  # Resize the image to fit in the cell
+        row_idx = idx // cols
+        col_idx = idx % cols
+
+        y_start = row_idx * (cell_size[1] + padding)
+        x_start = col_idx * (cell_size[0] + padding)
+        y_end = y_start + cell_size[1]
+        x_end = x_start + cell_size[0]
+
+        grid_img[y_start:y_end, x_start:x_end] = resized_img  # Place image in the grid
+        grid_coords.append(((y_start, y_end), (x_start, x_end), paths[idx]))  # Store image coordinates and path
+
+    # Set up the window and mouse callback
+    cv2.namedWindow(window_name)
+    param = {"grid_coords": grid_coords, "img_paths": paths, "close_flag": close_image_window, "pdf_image_path": pdf_image_path}
+    cv2.setMouseCallback(window_name, mouse_callback, param)
+
+    while True:
+        cv2.imshow(window_name, grid_img)
+        key = cv2.waitKey(1)
+        if key == 27 or param["close_flag"]:  # Press ESC to close or if flag is True
+            break
+
+    cv2.destroyAllWindows()
+    return param["pdf_image_path"]
+
+
+def string_mouse_callback(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        strings = param["strings"]
+        close_flag = param["close_flag"]
+        pdf_caption_text = param["pdf_caption_text"]
+        y_offset = 50  # Vertical offset for the text lines
+        text_height = 30  # Height of each text line
+        click_padding = 10  # Additional padding between text lines for easier clicking
+        clicked_text = None
+        
+        # Check if the click is within the bounds of any string
+        for idx, text in enumerate(strings):
+            y_start = y_offset + idx * (text_height + click_padding)  # Add padding to each line's position
+            y_end = y_start + text_height
+            # If the click position (y) is within the range of a string's position
+            if y_start <= y <= y_end:
+                clicked_text = text
+                break
+        
+        if clicked_text:
+            print(f"Clicked on: {clicked_text}")
+            pdf_caption_text = clicked_text  # Update the caption text
+            close_flag = True  # Set close flag to True
+
+        param["close_flag"] = close_flag
+        param["pdf_caption_text"] = pdf_caption_text
+
+
+
+def display_strings(strings, window_name="Strings List", close_caption_window = False, pdf_caption_text = ''):
+
+    # Create a blank image to draw the strings on
+    img = np.zeros((500, 700, 3), dtype=np.uint8)  # Adjust size if needed
+    img[:] = (255, 255, 255)  # White background
+
+    y_offset = 50  # Start Y-position for the first string
+    text_height = 30  # Height of each line of text
+    click_padding = 10  # Additional padding between text lines for easier clicking
+
+    # Draw each string onto the image
+    for idx, text in enumerate(strings):
+        y_position = y_offset + idx * (text_height + click_padding)
+        cv2.putText(img, text, (50, y_position + text_height // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2, cv2.LINE_AA)
+
+    # Set up the window and mouse callback
+    cv2.namedWindow(window_name)
+    param = {"strings": strings, "close_flag": close_caption_window, "pdf_caption_text": pdf_caption_text}
+    cv2.setMouseCallback(window_name, string_mouse_callback, param)
+
+
+    while True:
+        cv2.imshow(window_name, img)
+        key = cv2.waitKey(1)
+        if key == 27 or param["close_flag"]:  # Press ESC to close or click on an option
+            break
+
+    cv2.destroyAllWindows()
+    return param["pdf_caption_text"]
+
+
+def clear_images_folder(folder_path):
+    # Check if folder exists
+    if os.path.exists(folder_path):
+        # Loop through all files and subdirectories
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            
+            # If it's a directory, remove it recursively
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+            else:
+                # If it's a file, remove it
+                os.remove(file_path)
+        print(f"All contents of {folder_path} have been deleted.")
+    else:
+        print(f"The folder {folder_path} does not exist.")
+
+
 

@@ -1,35 +1,15 @@
 from extractHeadings import getHeadings, getImageCaption
 from extractHighlightedText import getHighlightedText, getTextFromPDFAsParagraphs
 from extractImages import getImages
-from utils import fitz, pdf_page_to_image, saveText, re
+from utils import *
 from thefuzz import fuzz, process
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-from reportlab.lib.pagesizes import letter
 
 
 
 
-
-def displayResult(title, iterable):
-    print(f"\n\n\n\n\n\n\n\n{title}: \n\n")
-    for i in iterable: 
-        print(i, end="\n\n")
-
-def get_count(iterable, counter):
-    for i in iterable:
-        counter += len(i)
-    return counter
-
-
-def text_save(print_results=False, show_progress=True, save_as_text=True, threshold=50):
+ 
+def get_summary(doc, print_results=False, include_images=False, images_folder="images/images", show_progress=True, isPDF=True, threshold=50):
     results = []
-
-    # First load the PDF document
-    doc = fitz.open("test_pdfs/pages_28_to_31.pdf")
-    # doc = fitz.open("test_pdfs/page_28.pdf")
 
     # Process each page
     for page_num in range(1, doc.page_count+1):
@@ -61,169 +41,74 @@ def text_save(print_results=False, show_progress=True, save_as_text=True, thresh
         highlight_matches = sorted(highlight_matches, key=lambda x: actual_page_text.index(x))
         displayResult("HIGHLIGHTED TEXT MATCHES", highlight_matches) if print_results else None
 
+
+        
+
+        if include_images:
+            while True:
+                cv2.imshow('Original Image', img)
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27 or key in (ord('q'), ord('x')):  # Press ESC to close or click on an option
+                    break
+            getImages(img, show_contours=False, show_result=False)
+            possible_captions = getImageCaption(actual_page_text_for_headings)
+            images, paths = load_images_from_folder(images_folder)
+            image_path_result = display_images_grid(images, paths, close_image_window=False, pdf_image_path='')
+            image_caption_result = display_strings(possible_captions, window_name="Select The Correct Caption: ", close_caption_window = False, pdf_caption_text = '')
+
+
         # Match headings with the highlighted text
         headings = getHeadings(actual_page_text_for_headings)
         displayResult("PAGE HEADINGS", headings) if print_results else None
 
         for index, match in enumerate(highlight_matches):
-            seen_headings = []
             for heading in headings:
                 if heading in match:
-                    if heading not in seen_headings:
                         highlight_matches[index] = match.replace(match[ match.find(heading) : match.find(heading)+len(heading) ], "") # Replace current Heading Sentence with sentence without heading.
                         highlight_matches.insert(index, f"\n\n\n####### {heading} ##############\n\n\n") # Insert the New Heading
-
-                        seen_headings.append(heading)
-
-
-                    # Get that heading
-                    # heading_acquired  = 
-
         highlight_matches_count = get_count(highlight_matches, highlight_matches_count)
 
         # Append page results to the main results list
         results.append(f"Page {page_num}:\n")
         results.extend(highlight_matches)
-        results.append(f"\n\nOriginal Text Length {original_count}\n{'      |     ' if not save_as_text else ''}Highlighted Text Count: {highlight_matches_count}")
+        if include_images:
+            results.append(image_path_result)
+            results.append(image_caption_result)
+
+        results.append(f"\n\nOriginal Text Length {original_count}\n'      |      \nHighlighted Text Count: {highlight_matches_count}")
         results.append("\n\n==============================================================\n\n")
 
         print(f"[INFO] Page {page_num} of {doc.page_count}: Extraction completed with {highlight_matches_count} highlights from {original_count} original text and {len(headings)} headings.\n") if show_progress else None
-
-    # Save the final results
-    if save_as_text:
-        saveText(results, "FINAL_RESULT.txt")
         displayResult("RESULT", results) if print_results else None
-        doc.close()
-    else:
-        doc.close()
-        return results
-
-
-
-
-def create_header_footer(elements, item, is_footer=False, page_width=letter[0], page_height=letter[1]):
-    # If it's a header or a footer
-    header_style = ParagraphStyle(
-        name="Header",
-        fontName="Helvetica",
-        fontSize=10,
-        textColor=colors.grey,
-        spaceAfter=6,
-        alignment=0
-    )
-
-    footer_style = ParagraphStyle(
-        name="Footer",
-        fontName="Helvetica",
-        fontSize=10,
-        textColor=colors.grey,
-        spaceBefore=6,
-        alignment=2
-    )
     
-    if is_footer:
-        # Add footer with page number or other footer text
-        elements.append(Spacer(1, 12))  # Spacer before footer
-        elements.append(Paragraph(item, footer_style))  
-        elements.append(Spacer(1, 12))  
-
-    else:
-        # Add header
-        elements.append(Spacer(1, 12))  
-        elements.append(Paragraph(item, header_style))  
-        elements.append(Spacer(1, 12))  
+    
+    
+        cv2.destroyAllWindows()
+    return results
 
 
 
 
+path = "test_pdfs/pages_28_to_31.pdf"
+# path = "test_pdfs/page_28.pdf"
+# path = "test_pdfs/page_31.pdf"
 
-def save_to_pdf(results, filename):
-    # Create the PDF document
-    doc = SimpleDocTemplate(filename, pagesize=letter)
-    elements = []
-
-    # Get default styles
-    styles = getSampleStyleSheet()
-
-    # Custom Heading style (using a large font and bold)
-    heading_style = ParagraphStyle(
-        name="Heading1",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=15,
-        textColor=colors.darkblue,
-        spaceAfter=12,
-        # alignment=1,  # Centered
-        alignment=0,  # Left Centered ?
-    )
-
-    # Custom normal text style
-    normal_style = ParagraphStyle(
-        name="Normal",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=12,
-        textColor=colors.black,
-        spaceAfter=6,
-    )
-
-    bullet_style = ParagraphStyle(
-        name="Bullet",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=12,
-        textColor=colors.black,
-        spaceAfter=10,
-        bulletFontName="Helvetica",
-        bulletFontSize=50,
-        bulletColor=colors.black,
-        leftIndent=25,
-        bulletSymbol="◉",
-    )
-
-    # Iterate over the results and add them as paragraphs
-    for item in results:
-        # Check if the item is a heading or normal text
-        if "#######" in item:
-            heading = item.split("#######")[1].split("##############")[0].strip()
-            # Add heading with custom style
-            elements.append(Paragraph(heading, heading_style))
-        else:
-            # Add normal text with the normal style
-            # elements.append(Paragraph(item, normal_style))
-
-            if item == "\n\n==============================================================\n\n":
-                elements.append(Spacer(1, 12))  # Adds space before the line
-
-                # Add a horizontal line
-                line = HRFlowable(width="100%", color=colors.black, thickness=1)
-                elements.append(line)
-                # Add some space after the horizontal line
-                elements.append(Spacer(1, 12)) 
-                continue
-            elif re.match(r"^Page \d+:$", item):
-                create_header_footer(elements, item)
-                continue
-
-            elif re.match(r"\n\nOriginal Text Length \d+\n      |     Highlighted Text Count: \d+", item):
-                create_header_footer(elements, item, is_footer=True)
-                continue
-
-            elements.append(Paragraph(f"◉   {item}", bullet_style))
+image_folder = "images/images"
 
 
-    # Build the PDF
-    doc.build(elements)
+doc = fitz.open(path)
 
 # Example results
-results = text_save(print_results=False, show_progress=False, save_as_text=False)
+results = get_summary(doc, include_images=True, images_folder=image_folder, print_results=False, show_progress=True, isPDF=True, threshold=60)
 
 
-# Save to PDF
+# saveText(results, "FINAL_RESULT.txt")
 save_to_pdf(results, "test_pdfs/OUTPUT.pdf")
 
 
 
 
-# TODO Fix spaces here             elif re.match(r"\n\nOriginal Text Length \d+\n      |     Highlighted Text Count: \d+", item):
-# TODO Fix headings so that only headings are added at the top and the rest is placed at the bottom.
+
+
+
+doc.close()
