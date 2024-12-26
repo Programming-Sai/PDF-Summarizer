@@ -1,7 +1,6 @@
 from utils import *
 
 
-doc = fitz.open("test_pdfs/page_28.pdf")
 
 
 
@@ -29,11 +28,3 @@ def getImageCaption(paragraphs):
 
 
 
-
-paragraphs = getTextFromPDFAsParagraphs(doc)
-
-
-# print([paragraphs[0]])
-print(getImageCaption(paragraphs))
-print("\n\n")
-print(getHeadings(paragraphs))

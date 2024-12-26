@@ -27,5 +27,3 @@ def getImages(img_path, show_result=True, save_result=True):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-
-getImages(path)

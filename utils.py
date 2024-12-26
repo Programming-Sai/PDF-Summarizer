@@ -3,6 +3,8 @@ import numpy as np
 from pytesseract import pytesseract
 import re
 import fitz
+from PIL import Image
+import io
 
 
 
@@ -86,47 +88,45 @@ def detectImages(img):
 
 
 def contains_number_pattern(string, caption=False):
-    # Pattern for captions: "Some things_Figure *.* Some other things"
-    caption_pattern = r".*Figure \d+\.\d+(\.\d+)?(.*)"
-    
-    # Pattern for non-captions: "___*.*___" or "___*.*.*___"
-    general_pattern = r".*\d+\.\d+(\.\d+)?.*"
-    
+    caption_pattern = r".*\bFigure \d+\.\d+(\.\d+)?\b.*"  # Matches figure references like "Figure 1.1"
+    general_pattern = r"^\s*\d+\.\d+(\.\d+)?\b.*"  # Matches valid headings (e.g., "1.1 Introduction")
+
+    string = string.replace("\n", " ")  # Normalize string for pattern matching
+
     if caption:
-        # Check if the string matches the pattern "Some things_Figure *.* Some other things"
-        if re.match(caption_pattern, string.replace("\n", " ")):  # Replace newlines with spaces for easier matching
-            return True
-        else:
-            return False
-    if not re.search(r".* Figure \d+\.\d+(\.\d+)?", string):
-        # Check for non-captions that have format "___*.*___" or "___*.*.*___"
-        if re.search(general_pattern, string.replace("\n", " ")):  # Replace newlines with spaces for easier matching
-            return True
+        # Check for caption pattern
+        return bool(re.match(caption_pattern, string))
+
+    # Exclude figure references
+    if not re.search(caption_pattern, string):
+        # Check for general heading pattern
+        return bool(re.match(general_pattern, string))
+
     return False
 
 
-def getTextFromPDFAsParagraphs(doc):
-    text = ""
-
-    # Loop through all the pages in the PDF
-    for page_num in range(doc.page_count):
-        page = doc.load_page(page_num)
-        text += page.get_text()
-
-    # Split the text into paragraphs by newlines
-    paragraphs = text.split('. ')
-
-    # Optionally, you can further process paragraphs if needed
-    paragraphs = [p.strip() for p in paragraphs if p.strip()]
-    return paragraphs
+def getTextFromPDFAsParagraphs(doc, page_number):
+    text = doc.load_page(page_number-1).get_text()
+    paragraphsForNormal = [i.replace("\n", " ").strip() for i in text.split('. ') if i.replace("\n", " ").strip()]
+    paragraphsForHeadings = [i.strip() for i in text.split('. ') if i.strip()]
+    return paragraphsForNormal, paragraphsForHeadings
 
 
-def getRoi(img, contours):
+def getRoi(contours):
     roiList = []
     for con in contours:
         x, y, w, h = con[3]
-        roiList.append(img[y:y+h, x:x+w])
+        roiList.append((x, y, x+w, y+h))
     return roiList
+
+
+def get_text_from_bbox(doc, page_number, bbox):
+    # Load the specified page (note: page_number is 1-based)
+    page = doc.load_page(page_number - 1)
+    
+    # Get text from the specified bounding box area
+    text = page.get_text("text", clip=fitz.Rect(bbox))
+    return text
 
 
 def roiDisplay(roiList, show_process=False):
@@ -135,10 +135,23 @@ def roiDisplay(roiList, show_process=False):
         cv2.imshow(f"Cropped Image {x}", roi) if show_process else ""
 
 
-def saveText(highlightedText):
-    with open("Result.txt", 'w') as f:
+def saveText(highlightedText, result_name):
+    with open(result_name or "Result.txt", 'w') as f:
         for text in highlightedText:
             f.writelines(f'\n{text}')
+
+
+def preprocess_image(image):
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply thresholding to enhance text
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # Denoise the image
+    denoised = cv2.medianBlur(thresh, 3)
+
+    return denoised
 
 
 def stackImages(scale, imgArray):
@@ -173,4 +186,76 @@ def stackImages(scale, imgArray):
         hor = np.hstack(imgArray)
         ver = hor
     return ver
+
+
+def split_pdf(input_pdf, output_folder, start_page=None, end_page=None):
+    # Open the input PDF
+    doc = fitz.open(input_pdf)
+
+    # Handle single page extraction
+    if start_page is not None and end_page is None:
+        end_page = start_page  # If only start_page is provided, treat it as a single page
+        # Create a new PDF for the single page
+        new_doc = fitz.open()
+        new_doc.insert_pdf(doc, from_page=start_page - 1, to_page=start_page - 1)
+        
+        # Save the new PDF with the page number
+        new_doc.save(f"{output_folder}/page_{start_page}.pdf")
+        new_doc.close()
+        doc.close()
+        return 
+
+    # If both start_page and end_page are provided, extract the range of pages
+    if start_page is not None and end_page is not None:
+        # Ensure page numbers are within the valid range
+        start_page = max(start_page - 1, 0)  # fitz uses zero-indexed pages
+        end_page = min(end_page - 1, doc.page_count - 1)
+
+        # Create a new PDF for the range of pages
+        new_doc = fitz.open()
+        
+        # Insert pages in the specified range
+        new_doc.insert_pdf(doc, from_page=start_page, to_page=end_page)
+
+        # Save the new PDF with the page range
+        new_doc.save(f"{output_folder}/pages_{start_page + 1}_to_{end_page + 1}.pdf")
+        new_doc.close()
+        doc.close()
+        return 
+
+
+def pdf_page_to_image(doc, page_number):    
+    # Ensure the page number is valid
+    if page_number < 1 or page_number > doc.page_count:
+        print("Invalid page number!")
+        return None
+    
+    # Get the specified page (0-indexed, so subtract 1)
+    page = doc.load_page(page_number - 1)
+    
+    # Convert the page to a pixmap (image)
+    pix = page.get_pixmap()
+    
+    # Convert the pixmap to a PIL image
+    pil_image = Image.open(io.BytesIO(pix.tobytes()))
+    rgb_array = np.array(pil_image)
+
+    # Convert RGB to BGR (OpenCV uses BGR format)
+    bgr_image = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+
+    return bgr_image
+
+
+def save_image(image, output_image_path):
+    """
+    Save a PIL Image object to a file.
+    
+    :param image: The PIL Image object to save.
+    :param output_image_path: The file path where the image should be saved.
+    """
+    if image:
+        image.save(output_image_path)
+        print(f"Image saved to {output_image_path}")
+    else:
+        print("No image to save.")
 
