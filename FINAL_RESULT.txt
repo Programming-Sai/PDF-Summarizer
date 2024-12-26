@@ -1,26 +1,28 @@
 
 Page 1:
 
-4 Chapter 1 Introduction user 1 user 2 user 3 computer hardware operating system system and application programs compiler assembler text editor database system user n … … Figure 1.1 Abstract view of the components of a computer system. 
+
 
 
 ####### 1.1 What Operating Systems Do ##############
 
 
- We begin our discussion by looking at the operating system’s role in the overall computer system
+
+4 Chapter 1 Introduction user 1 user 2 user 3 computer hardware operating system system and application programs compiler assembler text editor database system user n … … Figure 1.1 Abstract view of the components of a computer system.  We begin our discussion by looking at the operating system’s role in the overall computer system
 A computer system can be divided roughly into four components: the hardware, the operating system, the application programs, and the users (Figure 1.1). The hardware—the central processing unit (CPU), the memory, and the input/output (I/O) devices—provides the basic computing resources for the system
 The application programs—such as word processors, spreadsheets, compilers, and Web browsers—deﬁne the ways in which these resources are used to solve users’ computing problems
 The operating system controls the hardware and coordinates its use among the various application programs for the various users. We can also view a computer system as consisting of hardware, software, and data
 The operating system provides the means for proper use of these resources in the operation of the computer system
 An operating system is similar to a government
 Like a government, it performs no useful function by itself
-It simply provides an environment within which other programs can do useful work. To understand more fully the operating system’s role, we next explore operating systems from two viewpoints: that of the user and that of the system. 
+
 
 
 ####### 1.1.1 User View ##############
 
 
- The user’s view of the computer varies according to the interface being used
+
+It simply provides an environment within which other programs can do useful work. To understand more fully the operating system’s role, we next explore operating systems from two viewpoints: that of the user and that of the system.  The user’s view of the computer varies according to the interface being used
 Most computer users sit in front of a PC, consisting of a monitor, keyboard, mouse, and system unit
 Such a system is designed for one user
 
@@ -40,6 +42,7 @@ Page 2:
 ####### 1.1 What Operating Systems Do ##############
 
 
+
  5 to monopolize its resources
 The goal is to maximize the work (or play) that the user is performing
 In this case, the operating system is designed mostly for ease of use, with some attention paid to performance and none paid to resource utilization—how various hardware and software resources are shared
@@ -49,13 +52,14 @@ These users have dedicated resources at their disposal, but they also share reso
 Therefore, their operating system is designed to compromise between individual usability and resource utilization. Recently, many varieties of mobile computers, such as smartphones and tablets, have come into fashion
 Increasingly, these mobile devices are replacing desktop and laptop computers for people who are primarily interested in using computers for e-mail and web browsing
 The user interface for mobile computers generally features a touch screen, where the user interacts with the system by pressing and swiping ﬁngers across the screen rather than using a physical keyboard and mouse. Some computers have little or no user view
-For example, embedded computers in home devices and automobiles may have numeric keypads and may turn indicator lights on or off to show status, but they and their operating systems are designed primarily to run without user intervention. 
+
 
 
 ####### 1.1.2 System View ##############
 
 
- From the computer’s point of view, the operating system is the program most intimately involved with the hardware
+
+For example, embedded computers in home devices and automobiles may have numeric keypads and may turn indicator lights on or off to show status, but they and their operating systems are designed primarily to run without user intervention.  From the computer’s point of view, the operating system is the program most intimately involved with the hardware
 In this context, we can view an operating system as a resource allocator
 A computer system has many resources that may be required to solve a problem: CPU time, memory space, ﬁle-storage space, I/O devices, and so on
 The operating system acts as the manager of these resources
@@ -102,22 +106,25 @@ Page 4:
 ####### 1.2 Computer-System Organization ##############
 
 
+
  7 is increasing
 Mobile operating systems often include not only a core kernel but also middleware—a set of software frameworks that provide additional services to application developers
-For example, each of the two most promi- nent mobile operating systems—Apple’s iOS and Google’s Android—features a core kernel along with middleware that supports databases, multimedia, and graphics (to name a only few). 
+
 
 
 ####### 1.2 Computer-System Organization ##############
 
 
- Before we can explore the details of how computer systems operate, we need general knowledge of the structure of a computer system
-The section is mostly concerned with computer-system organization, so you can skim or skip it if you already understand the concepts. 
+
+For example, each of the two most promi- nent mobile operating systems—Apple’s iOS and Google’s Android—features a core kernel along with middleware that supports databases, multimedia, and graphics (to name a only few).  Before we can explore the details of how computer systems operate, we need general knowledge of the structure of a computer system
+
 
 
 ####### 1.2.1 Computer-System Operation ##############
 
 
- A modern general-purpose computer system consists of one or more CPUs and a number of device controllers connected through a common bus that provides access to shared memory (Figure 1.2)
+
+The section is mostly concerned with computer-system organization, so you can skim or skip it if you already understand the concepts.  A modern general-purpose computer system consists of one or more CPUs and a number of device controllers connected through a common bus that provides access to shared memory (Figure 1.2)
 To ensure orderly access to the shared memory, a memory controller synchronizes access to the memory. For a computer to start running—for instance, when it is powered up or rebooted—it needs to have an initial program to run
 Typically, it is stored within the computer hardware in read-only memory (ROM) or electrically erasable programmable read-only memory (EEPROM), known by the general term ﬁrmware
 
