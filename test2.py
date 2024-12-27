@@ -1,12 +1,15 @@
+m = True
 
+print(f"Initial m: {m}")  # Debugging point to show initial value of m
 
-OG = "The Boy is a Speedster"
-sub_OG = "Boy is"
-
-i = OG.find(sub_OG)
-j = OG.find(sub_OG)+len(sub_OG)
-
-print(i, j, OG[i:j], OG.replace(OG[i:j], ""), OG)
-
-
-# For example, each of the two most promi- nent mobile operating systems—Apple’s iOS and Google’s Android—features a core kernel along with middleware that supports databases, multimedia, and graphics (to name a only few).  Before we can explore the details of how computer systems operate, we need general knowledge of the structure of a computer system
+if 50 < 10:
+    print("First condition (5 < 10) is True.")
+    if 4 < 5:
+        print("Second condition (4 < 5) is True, modifying m.")
+        m = False  # This changes the value of m
+        print(f"Modified m: {m}")  # Debugging point to show modified value of m
+elif 60 > 10:
+    print("First condition (5 < 10) is False, but second (60 > 10) is True.")
+    if 5 > 3:
+        print("Third condition (5 > 3) is True.")
+        print(m)  # At this point, m is still False due to the previous modification

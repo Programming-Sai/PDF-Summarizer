@@ -5,7 +5,7 @@ from utils import *
 from thefuzz import fuzz, process
 import argparse as ag
 import sys
-
+import json
 
 
  
@@ -90,22 +90,43 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 
 
 
-STATE_FILE = "state.tmp"
+STATE_FILE = "state.json"
 
-def save_state(pdf_path):
+def save_state(pdf_path, persist_state):
+    # Create a dictionary to hold both values
+    state = {
+        "pdf_path": pdf_path,
+        "persist_state": persist_state
+    }
+    
+    # Write the dictionary to a JSON file
     with open(STATE_FILE, "w") as f:
-        f.write(pdf_path)
+        json.dump(state, f)  
+
+    print(f"State saved: {state}")
 
 def load_state():
-    if not os.path.exists(STATE_FILE):
-        raise ValueError("You must run the `init` command first.")
-    with open(STATE_FILE, "r") as f:
-        return f.read().strip()
+    try:
+        # Read the JSON file and load the state into a dictionary
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+        
+        pdf_path = state.get("pdf_path")
+        persist_state = state.get("persist_state")
+
+        print(f"State loaded: pdf_path={pdf_path}, persist_state={persist_state}")
+        return pdf_path, persist_state
+    except FileNotFoundError:
+        raise ValueError("State file not found.")
+    except json.JSONDecodeError:
+        raise ValueError("Error decoding state file.")
 
 def clear_state():
     if os.path.exists(STATE_FILE):
         os.remove(STATE_FILE)
         print("\nCurrent State Cleared\n")
+
+
 
 
 
@@ -155,7 +176,7 @@ summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='
 
 args = parser.parse_args()
 
-persist_state = True
+
 
 
 if args.command == 'init':
@@ -163,11 +184,11 @@ if args.command == 'init':
     if not os.path.exists(pdf_path):
         print(f"Error: File '{pdf_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
-    save_state(pdf_path)
+    save_state(pdf_path, True)
     print(f"Initialized with PDF file: {pdf_path}")
     if args.dont_persist_state:
-        persist_state = False
-        print("Current State would Not be preserved" if not persist_state else "Current State would be preserved")
+        save_state(pdf_path, False)
+        print("Current State would Not be preserved")
     elif args.reset_state:
         clear_state()
 
@@ -175,7 +196,7 @@ if args.command == 'init':
 
 elif args.command == 'summarize':
         try:
-            pdf_path = load_state()
+            pdf_path, persist_state = load_state()
         except ValueError as e:
             print(str(e), file=sys.stderr)
             sys.exit(1)
@@ -206,15 +227,21 @@ elif args.command == 'summarize':
             docx = True
             pdf = False  
         if not (pdf or txt or docx):
-            pdf = True 
+            pdf = True
+
+
 
         # results = get_summary(doc, include_images=include_images, images_folder=images_folder, print_results=print_results, show_progress=show_progress, isPDF=pdf, threshold=threshold)
         doc = fitz.open(pdf_path)
 
-        print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n")
+        print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n\nState Persistance: {persist_state}")
         
         doc.close()
 
-        if not persist_state: clear_state()
+        if not persist_state: 
+            print("Clearing state...")
+            clear_state()
+        else:
+            print("State is preserved.")
         
 
