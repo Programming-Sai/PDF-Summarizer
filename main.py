@@ -9,7 +9,7 @@ import json
 
 
  
-def get_summary(doc, print_results=False, include_images=False, images_folder="images/images", show_progress=True, isPDF=True, threshold=50):
+def get_summary(doc, print_results=False, include_images=False, images_folder="images/images", show_progress=True, threshold=50, show_image_process=False):
     results = []
 
     # Process each page
@@ -30,7 +30,7 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
         displayResult("ORIGINAL TEXT", actual_page_text) if print_results else None
 
         # Extract highlighted text on the page
-        hText = getHighlightedText(doc, page_num, img, show_result_image=False, save_extracted_text=False)
+        hText = getHighlightedText(doc, page_num, img, show_result_image=show_image_process, show_process=show_image_process, save_extracted_text=False)
         displayResult("HIGHLIGHTED TEXT", hText) if print_results else None
 
         # Perform fuzzy matching between highlights and actual text
@@ -51,7 +51,7 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27 or key in (ord('q'), ord('x')):  # Press ESC to close or click on an option
                     break
-            getImages(img, show_contours=False, show_result=False)
+            getImages(img, show_contours=show_image_process, show_result=show_image_process)
             possible_captions = getImageCaption(actual_page_text_for_headings)
             images, paths = load_images_from_folder(images_folder)
             image_path_result = display_images_grid(images, paths, close_image_window=False, pdf_image_path='')
@@ -93,28 +93,19 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 STATE_FILE = "state.json"
 
 def save_state(pdf_path, persist_state):
-    # Create a dictionary to hold both values
     state = {
         "pdf_path": pdf_path,
         "persist_state": persist_state
     }
-    
-    # Write the dictionary to a JSON file
     with open(STATE_FILE, "w") as f:
         json.dump(state, f)  
 
-    print(f"State saved: {state}")
-
 def load_state():
     try:
-        # Read the JSON file and load the state into a dictionary
         with open(STATE_FILE, "r") as f:
             state = json.load(f)
-        
         pdf_path = state.get("pdf_path")
         persist_state = state.get("persist_state")
-
-        print(f"State loaded: pdf_path={pdf_path}, persist_state={persist_state}")
         return pdf_path, persist_state
     except FileNotFoundError:
         raise ValueError("State file not found.")
@@ -148,30 +139,47 @@ def clear_state():
 # save_to_pdf(results, "test_pdfs/OUTPUT.pdf")
 
 
+
+
+
 parser = ag.ArgumentParser(description='OS PDF Summarizer.')
 
 sub_parser = parser.add_subparsers(dest='command', required=False, parser_class=ag.ArgumentParser)
 
 
 init_parser = sub_parser.add_parser('init', help='Initialize with a PDF file path.')
-init_parser.add_argument('pdf_file', type=str, help='Path to the PDF file.')
+# init_parser.add_argument('pdf_file', type=str, help='Path to the PDF file.')
+init_parser.add_argument('pdf_file', nargs='?', default='', type=str, help='Path to the PDF file.')
 init_parser.add_argument('-d','--dont-persist-state', action='store_true', help='Determins if to persist the current state or not.')
 init_parser.add_argument('-r','--reset-state', action='store_true', help='Determins if to reset the current state or not.')
 
 
 
-summariser_parser = sub_parser.add_parser('summarize', help='Command to execute summarize, split or merge of a pdf.', description='Command to execute summarize, split or merge of a pdf.')
+summariser_parser = sub_parser.add_parser('summarize', help='Command to summmarize pdf content based on its highlighted text', description='Command to summmarize pdf content based on its highlighted text')
 
 
 summariser_parser.add_argument('-i', '--include-images', action='store_true', help='Determines If images should be included in the pdf or docx result')
 summariser_parser.add_argument('-f', '--images-folder', type=str, help='The path to the folder holding the images.')
 summariser_parser.add_argument('-o', '--output-path', type=str, help='The path to save the result of the summarisation, if any')
+summariser_parser.add_argument('-u', '--input-path', type=str, help='The path to get the pdf from for summarisation')
 summariser_parser.add_argument('-p', '--print-results', action='store_true', help='Determins if the result for the entire operation should be displayed or not.')
-summariser_parser.add_argument('-s', '--show_progress', action='store_true', help='Determins If the current progress of the entire operations should be shown in the terminal or not.')
+summariser_parser.add_argument('-s', '--show-progress', action='store_true', help='Determins If the current progress of the entire operations should be shown in the terminal or not.')
+summariser_parser.add_argument('-a', '--show-image-process', action='store_true', help='Determins If All the images are shown as the processing is done. enable this wisely')
 summariser_parser.add_argument('--pdf', action='store_true', help='Determins whether to save the work as a pdf or not')
 summariser_parser.add_argument('--txt', action='store_true', help='Determins whether to save the work as a text file or not')
 summariser_parser.add_argument('--docx', action='store_true', help='Determins whether to save the work as a word file or not')
+summariser_parser.add_argument('-v', '--verbose', action='store_true', help='Allows all debug and print statements to be displayed.')
 summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='(0-100) Accuracy level for text summarization.')
+
+
+
+
+split_parser = sub_parser.add_parser('split', help='Command USed to Split A single Pdf into get a single page, or a range of pages.', description='Command USed to Split A single Pdf into get a single page, or a range of pages.')
+
+merge_parser = sub_parser.add_parser('merge', help='This would merge multiple pdfs into a single one.', description='Command USed to Split A single Pdf into get a single page, or a range of pages.')
+
+
+
 
 
 args = parser.parse_args()
@@ -180,17 +188,30 @@ args = parser.parse_args()
 
 
 if args.command == 'init':
+    if args.reset_state:
+        if not os.path.exists(STATE_FILE):
+            print("Error: No saved state to reset.")
+            sys.exit(1)
+        else:
+            clear_state()
+            sys.exit(0)
+
+    if not args.pdf_file:
+        print("Error: You must specify a PDF file unless using --reset-state/-r.")
+        sys.exit(1)
+
     pdf_path = args.pdf_file
     if not os.path.exists(pdf_path):
-        print(f"Error: File '{pdf_path}' does not exist.", file=sys.stderr)
+        print(f"Error: File '{pdf_path}' does not exist.")
         sys.exit(1)
-    save_state(pdf_path, True)
     print(f"Initialized with PDF file: {pdf_path}")
+
     if args.dont_persist_state:
         save_state(pdf_path, False)
-        print("Current State would Not be preserved")
-    elif args.reset_state:
-        clear_state()
+        print("Current State would Not be preserved.")
+    else:
+        save_state(pdf_path, True)
+        print("State saved successfully.")
 
 
 
@@ -198,17 +219,22 @@ elif args.command == 'summarize':
         try:
             pdf_path, persist_state = load_state()
         except ValueError as e:
-            print(str(e), file=sys.stderr)
-            sys.exit(1)
+            if args.input_path:
+                pdf_path = args.input_path
+                persist_state = False
+            else:
+                # print(str(e), file=sys.stderr)
+                print("No input file stated")
+                sys.exit(1)
         include_images=False
         images_folder = "images/images"
         output_path = "test_pdfs/OUTPUT.pdf"
         print_results = False
         show_progress = True
+        show_image_process = False
         pdf = True
         txt = False
         docx = False
-        threshold = 50
         if args.include_images:
             include_images = True
         if args.images_folder:
@@ -219,6 +245,13 @@ elif args.command == 'summarize':
             print_results = True
         if args.show_progress:
             show_progress = False
+        if args.show_image_process:
+            show_image_process = False
+        if args.verbose:
+            print_results = True
+            show_progress = True
+            show_image_process = True
+
 
         if args.txt:
             txt = True
@@ -234,7 +267,7 @@ elif args.command == 'summarize':
         # results = get_summary(doc, include_images=include_images, images_folder=images_folder, print_results=print_results, show_progress=show_progress, isPDF=pdf, threshold=threshold)
         doc = fitz.open(pdf_path)
 
-        print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n\nState Persistance: {persist_state}")
+        print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {args.threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n\nState Persistance: {persist_state}\nVerbose Mode: {args.verbose}\n")
         
         doc.close()
 
