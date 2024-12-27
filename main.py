@@ -3,7 +3,7 @@ from extractHighlightedText import getHighlightedText, getTextFromPDFAsParagraph
 from extractImages import getImages
 from utils import *
 from thefuzz import fuzz, process
-
+import argparse as ag
 
 
 
@@ -89,24 +89,94 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 
 
 
-path = "test_pdfs/pages_28_to_31.pdf"
-# path = "test_pdfs/page_28.pdf"
+# path = "test_pdfs/pages_28_to_31.pdf"
+path = "test_pdfs/page_28.pdf"
 # path = "test_pdfs/page_31.pdf"
 
-image_folder = "images/images"
+# image_folder = "images/images"
 
 
 doc = fitz.open(path)
 
-# Example results
-results = get_summary(doc, include_images=True, images_folder=image_folder, print_results=False, show_progress=True, isPDF=True, threshold=60)
+# # Example results
+# results = get_summary(doc, include_images=True, images_folder=image_folder, print_results=False, show_progress=True, isPDF=True, threshold=60)
 
 
-# saveText(results, "FINAL_RESULT.txt")
-save_to_pdf(results, "test_pdfs/OUTPUT.pdf")
+# # saveText(results, "FINAL_RESULT.txt")
+# save_to_pdf(results, "test_pdfs/OUTPUT.pdf")
+
+
+parser = ag.ArgumentParser(description='OS PDF Summarizer.')
+
+sub_parser = parser.add_subparsers(dest='command', required=False, parser_class=ag.ArgumentParser)
+
+summariser_parser = sub_parser.add_parser('summarize', help='Command to execute summarize, split or merge of a pdf.', description='Command to execute summarize, split or merge of a pdf.')
+
+
+summariser_parser.add_argument('-i', '--include-images', action='store_true', help='Determines If images should be included in the pdf or docx result')
+summariser_parser.add_argument('-f', '--images-folder', type=str, help='The path to the folder holding the images.')
+summariser_parser.add_argument('-o', '--output-path', type=str, help='The path to save the result of the summarisation, if any')
+summariser_parser.add_argument('-p', '--print-results', action='store_true', help='Determins if the result for the entire operation should be displayed or not.')
+summariser_parser.add_argument('-s', '--show_progress', action='store_true', help='Determins If the current progress of the entire operations should be shown in the terminal or not.')
+summariser_parser.add_argument('--pdf', action='store_true', help='Determins whether to save the work as a pdf or not')
+summariser_parser.add_argument('--txt', action='store_true', help='Determins whether to save the work as a text file or not')
+summariser_parser.add_argument('--docx', action='store_true', help='Determins whether to save the work as a word file or not')
+summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='(0-100) Accuracy level for text summarization.')
+
+
+args = parser.parse_args()
+
+if args.command == 'summarize':
+        include_images=False
+        images_folder = "images/images"
+        output_path = "test_pdfs/OUTPUT.pdf"
+        print_results = False
+        show_progress = True
+        pdf = True
+        txt = False
+        docx = False
+        threshold = 50
+        if args.include_images:
+            include_images = True
+        if args.images_folder:
+            images_folder = args.images_folder
+        if args.output_path:
+            output_path = args.output_path
+        if args.print_results:
+            print_results = True
+        if args.show_progress:
+            show_progress = False
+
+        if args.txt:
+            txt = True
+            pdf = False  
+        if args.docx:
+            docx = True
+            pdf = False  
+        if not (pdf or txt or docx):
+            pdf = True 
+
+        # results = get_summary(doc, include_images=include_images, images_folder=images_folder, print_results=print_results, show_progress=show_progress, isPDF=pdf, threshold=threshold)
+        print(f"\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n")
+        # if args.pdf:
+        #     # save_to_pdf(results, output_path)
+        #     print(f"User Wants to save to PDF")
+        # elif args.txt:
+        #     # saveText(results, output_path)
+        #     print(f"User Wants to save to TXT")
+        # elif args.txt:
+        #     # saveText(results, output_path)
+        #     print(f"User Wants to save to DOCX")
 
 
 
+
+    # elif args.command == 'uninstall':
+    #     uninstall()
+    # elif args.command is None:
+    #     visualize(os.getcwd())
+    # else:
+    #     visualize(args.command)
 
 
 
