@@ -7,6 +7,8 @@ import argparse as ag
 import sys
 import json
 
+# from test2 import save_to_docx, create_header_footer
+
 
  
 def get_summary(doc, print_results=False, include_images=False, images_folder="images/images", show_progress=True, threshold=50, show_image_process=False):
@@ -176,8 +178,28 @@ summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='
 
 split_parser = sub_parser.add_parser('split', help='Command USed to Split A single Pdf into get a single page, or a range of pages.', description='Command USed to Split A single Pdf into get a single page, or a range of pages.')
 
-merge_parser = sub_parser.add_parser('merge', help='This would merge multiple pdfs into a single one.', description='Command USed to Split A single Pdf into get a single page, or a range of pages.')
+split_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the PDF file.')
+split_parser.add_argument('output_pdf_file', type=str, help='Path to the PDF file.')
+split_parser.add_argument('-s', '--start-page', type=int, default=None, help='This determines the starting range for the pdf splitting')
+split_parser.add_argument('-e', '--end-page', type=int, default=None, help='This determines the end range for the pdf splitting')
 
+
+
+
+merge_parser = sub_parser.add_parser('merge', help='This would merge multiple pdfs into a single one.', description='This would merge multiple pdfs into a single one.')
+
+
+merge_parser.add_argument('output_pdf_file', help="Path to the output PDF file")
+merge_parser.add_argument('input_pdf_files', nargs='*', help="Paths to the input PDF files for merging")
+
+
+
+
+pdf2img_parser = sub_parser.add_parser('pdf2img', help='Converts a single pdf page to a pdf', description='Converts a single pdf page to a pdf')
+
+pdf2img_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the PDF file for image conversion.')
+pdf2img_parser.add_argument('output_pdf_file', type=str, help='Path to the Output PDF file.')
+pdf2img_parser.add_argument('page_number', type=int, default=None, help='This determines the end range for the pdf splitting')
 
 
 
@@ -211,7 +233,6 @@ if args.command == 'init':
         print("Current State would Not be preserved.")
     else:
         save_state(pdf_path, True)
-        print("State saved successfully.")
 
 
 
@@ -276,5 +297,132 @@ elif args.command == 'summarize':
             clear_state()
         else:
             print("State is preserved.")
-        
 
+
+
+elif args.command == 'split':
+    try:
+        # Attempt to load the input PDF file path from the saved state
+        input_pdf_file, persist_state = load_state()
+    except ValueError as e:
+        # If the saved state doesn't have the input, check the user-provided input
+        if args.input_pdf_file:
+            input_pdf_file = args.input_pdf_file
+        else:
+            print("Error: No input file stated. Please provide an input file.")
+            sys.exit(1)
+    
+    # Validate input PDF file
+    if not os.path.isfile(input_pdf_file):
+        print(f"Error: {input_pdf_file} doesn't exist")
+        sys.exit(1)
+    elif not input_pdf_file.lower().endswith('.pdf'):
+        print(f"Error: {input_pdf_file} is not a PDF file. It must end with `.pdf`")
+        sys.exit(1)
+    
+    output_pdf_file = args.output_pdf_file
+    output_dir = os.path.dirname(output_pdf_file)
+    if output_dir and not os.path.exists(output_dir):
+        print(f"Error: The directory '{output_dir}' doesn't exist.")
+        sys.exit(1)
+    if not output_pdf_file.lower().endswith('.pdf'):
+        print("Error: The output file must have a `.pdf` extension.")
+        sys.exit(1)
+    if args.start_page:
+        start_page_str = str(args.start_page)  # Ensure it's treated as a string
+        if not start_page_str.isdigit():
+            print(f"Error: {args.start_page} must be an integer.")
+            sys.exit(1)
+        start_page = int(args.start_page)  # Convert to integer
+        if start_page < 1:
+            print(f"Error: {args.start_page} must be an integer greater than 0.")
+            sys.exit(1)
+    if args.end_page:
+        end_page_str = str(args.end_page)  # Ensure it's treated as a string
+        if not end_page_str.isdigit():
+            print(f"Error: {args.end_page} must be an integer.")
+            sys.exit(1)
+        end_page = int(args.end_page)  # Convert to integer
+        if end_page < 1:
+            print(f"Error: {args.end_page} must be an integer greater than 0.")
+            sys.exit(1)
+        
+        if args.start_page and end_page < start_page:
+            print(f"Error: End page must be greater than or equal to start page.")
+            sys.exit(1)
+    if not args.start_page and not args.end_page:
+        print("Both Start and End Page Cannot be Empty")
+        sys.exit(1)
+
+    print(f"\nInput PDF: {input_pdf_file}\nOutput PDF: {output_pdf_file}\nStart Page: {args.start_page}\nEnd Page: {args.end_page}\n")
+
+
+
+
+elif args.command == 'merge':
+    if len(args.input_pdf_files) < 2:
+        print("Error: At least two input PDFs must be provided to merge.")
+        sys.exit(1)
+
+    # Validate input PDF files
+    for input_pdf in args.input_pdf_files:
+        if not os.path.isfile(input_pdf):
+            print(f"Error: {input_pdf} doesn't exist")
+            sys.exit(1)
+        elif not input_pdf.lower().endswith('.pdf'):
+            print(f"Error: {input_pdf} is not a PDF file. It must end with `.pdf`")
+            sys.exit(1)
+
+    output_pdf_file = args.output_pdf_file
+    output_dir = os.path.dirname(output_pdf_file)
+    if output_dir and not os.path.exists(output_dir):
+        print(f"Error: The directory '{output_dir}' doesn't exist.")
+        sys.exit(1)
+    if not output_pdf_file.lower().endswith('.pdf'):
+        print("Error: The output file must have a `.pdf` extension.")
+        sys.exit(1)
+    
+    print(f"Output Pdf Path: {output_pdf_file}\nInput Pdf Paths: {args.input_pdf_files}")
+
+
+
+
+elif args.command == 'pdf2img':
+    try:
+        # Attempt to load the input PDF file path from the saved state
+        input_pdf_file, persist_state = load_state()
+    except ValueError as e:
+        # If the saved state doesn't have the input, check the user-provided input
+        if args.input_pdf_file:
+            input_pdf_file = args.input_pdf_file
+        else:
+            print("Error: No input file stated. Please provide an input file.")
+            sys.exit(1)
+    
+    output_pdf_folder = args.output_pdf_file
+    if not os.path.isdir(output_pdf_folder):
+        # Check if the directory exists, if not create it
+        try:
+            os.makedirs(output_pdf_folder)
+            print(f"Directory '{output_pdf_folder}' created.")
+        except Exception as e:
+            print(f"Error: Failed to create directory '{output_pdf_folder}'. {e}")
+            sys.exit(1)
+    
+    page_number = None  # Set default value to None
+
+    if args.page_number:
+        page_number_str = str(args.page_number)
+        if not page_number_str.isdigit():
+            print(f"Error: {args.page_number} must be an integer.")
+            sys.exit(1)
+        page_number = int(args.page_number)
+        if page_number < 1:
+            print(f"Error: {args.page_number} must be an integer greater than 0.")
+            sys.exit(1)
+    if not page_number:
+        print("Page Number must be greater than 1")
+        sys.exit(1)
+
+    # Print input PDF, output folder, and page number (if provided)
+    print(f"\nInput PDF: {input_pdf_file}\nOutput Folder: {output_pdf_folder}\nPage Number: {page_number}\n")

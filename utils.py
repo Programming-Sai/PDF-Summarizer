@@ -16,7 +16,9 @@ from reportlab.pdfgen import canvas
 import time
 import shutil
 import threading
-
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
 
@@ -138,7 +140,6 @@ def split_pdf(input_pdf, output_folder, start_page=None, end_page=None):
 
     # Handle single page extraction
     if start_page is not None and end_page is None:
-        end_page = start_page  # If only start_page is provided, treat it as a single page
         # Create a new PDF for the single page
         new_doc = fitz.open()
         new_doc.insert_pdf(doc, from_page=start_page - 1, to_page=start_page - 1)
@@ -553,4 +554,125 @@ def clear_images_folder(folder_path):
         print(f"The folder {folder_path} does not exist.")
 
 
+def merge_pdfs(output_pdf_file, *input_pdf_files):
+    # Create a new PDF document to store the merged result
+    merged_pdf = fitz.open()
+
+    # Loop through each input PDF and append its pages to the merged PDF
+    for pdf_file in input_pdf_files:
+        try:
+            with fitz.open(pdf_file) as pdf:
+                merged_pdf.insert_pdf(pdf)
+        except Exception as e:
+            print(f"Error: Unable to open or merge the file '{pdf_file}'. {e}")
+            return
+
+    # Save the merged PDF to the output file
+    merged_pdf.save(output_pdf_file)
+    print(f"Successfully merged PDFs into {output_pdf_file}")
+
+
+
+
+def create_header_footer_for_docx(doc, item, is_footer=False):
+    header_footer_style = {
+        "font_name": "Courier",
+        "font_size": 10,
+        "color": RGBColor(128, 128, 128),  # Grey color
+        "alignment": WD_PARAGRAPH_ALIGNMENT.LEFT if not is_footer else WD_PARAGRAPH_ALIGNMENT.RIGHT,
+    }
+
+    paragraph = doc.add_paragraph()
+    run = paragraph.add_run(item)
+    run.font.name = header_footer_style["font_name"]
+    run.font.size = Pt(header_footer_style["font_size"])
+    run.font.color.rgb = header_footer_style["color"]
+    paragraph.alignment = header_footer_style["alignment"]
+
+    # Add spacing
+    if is_footer:
+        paragraph.paragraph_format.space_before = Pt(6)
+    else:
+        paragraph.paragraph_format.space_after = Pt(6)
+
+
+
+
+
+def save_to_docx(results, filename, images_folder_path='images/images', clear_after_wards=True):
+    # Create the Word document
+    doc = Document()
+
+    # Custom Heading style
+    heading_style = {
+        "font_size": 15,
+        "bold": True,
+        "color": RGBColor(0, 0, 139),  # Dark blue
+        "alignment": WD_PARAGRAPH_ALIGNMENT.LEFT,
+    }
+
+    # Custom Bullet style
+    bullet_style = {
+        "font_size": 12,
+        "color": RGBColor(0, 0, 0),  # Black
+        "indentation": 25,
+        "symbol": "◉",
+    }
+
+    # Iterate over the results and add them to the document
+    i = 0
+    while i < len(results):
+        item = results[i]
+
+        # Check if the item is a heading or normal text
+        if "#######" in item:
+            heading = item.split("#######")[1].split("##############")[0].strip()
+            paragraph = doc.add_paragraph()
+            run = paragraph.add_run(heading)
+            run.font.size = Pt(heading_style["font_size"])
+            run.bold = heading_style["bold"]
+            run.font.color.rgb = heading_style["color"]
+            paragraph.alignment = heading_style["alignment"]
+        else:
+            # Handle Image Embedding
+            if os.path.isfile(item):
+                # Embed the image
+                img_path = item
+                doc.add_picture(img_path, width=Pt(200), height=Pt(200))
+
+                # Check if the next line is a caption for the image
+                if i + 1 < len(results) and "Figure" in results[i + 1]:
+                    caption = results[i + 1]
+                    paragraph = doc.add_paragraph()
+                    run = paragraph.add_run(caption)
+                    run.font.size = Pt(12)
+                    run.italic = True
+                    i += 1  # Skip the next item since it's the caption
+
+            elif item == "\n\n==============================================================\n\n":
+                # Add a horizontal line
+                paragraph = doc.add_paragraph()
+                run = paragraph.add_run("=" * 50)
+                run.font.size = Pt(12)
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            elif re.match(r"^Page \d+:$", item):
+                create_header_footer_for_docx(doc, item)
+            elif re.match(r"\n\nOriginal Text Length \d+\n' {6}\| {6}\nHighlighted Text Count: \d+", item):
+                create_header_footer_for_docx(doc, item, is_footer=True)
+            else:
+                # Add bullet points or other text
+                paragraph = doc.add_paragraph()
+                run = paragraph.add_run(f"{bullet_style['symbol']}   {item}")
+                run.font.size = Pt(bullet_style["font_size"])
+                run.font.color.rgb = bullet_style["color"]
+                paragraph.paragraph_format.left_indent = Pt(bullet_style["indentation"])
+
+        i += 1
+
+    # Save the Word document
+    doc.save(filename)
+
+    # Optional: Clear the images folder if specified
+    if clear_after_wards:
+        clear_images_folder(images_folder_path)
 
