@@ -4,6 +4,7 @@ from extractImages import getImages
 from utils import *
 from thefuzz import fuzz, process
 import argparse as ag
+import sys
 
 
 
@@ -89,14 +90,34 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 
 
 
+STATE_FILE = "state.tmp"
+
+def save_state(pdf_path):
+    with open(STATE_FILE, "w") as f:
+        f.write(pdf_path)
+
+def load_state():
+    if not os.path.exists(STATE_FILE):
+        raise ValueError("You must run the `init` command first.")
+    with open(STATE_FILE, "r") as f:
+        return f.read().strip()
+
+def clear_state():
+    if os.path.exists(STATE_FILE):
+        os.remove(STATE_FILE)
+        print("\nCurrent State Cleared\n")
+
+
+
+
+
 # path = "test_pdfs/pages_28_to_31.pdf"
-path = "test_pdfs/page_28.pdf"
+# path = "test_pdfs/page_28.pdf"
 # path = "test_pdfs/page_31.pdf"
 
 # image_folder = "images/images"
 
 
-doc = fitz.open(path)
 
 # # Example results
 # results = get_summary(doc, include_images=True, images_folder=image_folder, print_results=False, show_progress=True, isPDF=True, threshold=60)
@@ -109,6 +130,14 @@ doc = fitz.open(path)
 parser = ag.ArgumentParser(description='OS PDF Summarizer.')
 
 sub_parser = parser.add_subparsers(dest='command', required=False, parser_class=ag.ArgumentParser)
+
+
+init_parser = sub_parser.add_parser('init', help='Initialize with a PDF file path.')
+init_parser.add_argument('pdf_file', type=str, help='Path to the PDF file.')
+init_parser.add_argument('-d','--dont-persist-state', action='store_true', help='Determins if to persist the current state or not.')
+init_parser.add_argument('-r','--reset-state', action='store_true', help='Determins if to reset the current state or not.')
+
+
 
 summariser_parser = sub_parser.add_parser('summarize', help='Command to execute summarize, split or merge of a pdf.', description='Command to execute summarize, split or merge of a pdf.')
 
@@ -126,7 +155,30 @@ summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='
 
 args = parser.parse_args()
 
-if args.command == 'summarize':
+persist_state = True
+
+
+if args.command == 'init':
+    pdf_path = args.pdf_file
+    if not os.path.exists(pdf_path):
+        print(f"Error: File '{pdf_path}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+    save_state(pdf_path)
+    print(f"Initialized with PDF file: {pdf_path}")
+    if args.dont_persist_state:
+        persist_state = False
+        print("Current State would Not be preserved" if not persist_state else "Current State would be preserved")
+    elif args.reset_state:
+        clear_state()
+
+
+
+elif args.command == 'summarize':
+        try:
+            pdf_path = load_state()
+        except ValueError as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(1)
         include_images=False
         images_folder = "images/images"
         output_path = "test_pdfs/OUTPUT.pdf"
@@ -157,28 +209,12 @@ if args.command == 'summarize':
             pdf = True 
 
         # results = get_summary(doc, include_images=include_images, images_folder=images_folder, print_results=print_results, show_progress=show_progress, isPDF=pdf, threshold=threshold)
-        print(f"\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n")
-        # if args.pdf:
-        #     # save_to_pdf(results, output_path)
-        #     print(f"User Wants to save to PDF")
-        # elif args.txt:
-        #     # saveText(results, output_path)
-        #     print(f"User Wants to save to TXT")
-        # elif args.txt:
-        #     # saveText(results, output_path)
-        #     print(f"User Wants to save to DOCX")
+        doc = fitz.open(pdf_path)
 
+        print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n")
+        
+        doc.close()
 
+        if not persist_state: clear_state()
+        
 
-
-    # elif args.command == 'uninstall':
-    #     uninstall()
-    # elif args.command is None:
-    #     visualize(os.getcwd())
-    # else:
-    #     visualize(args.command)
-
-
-
-
-doc.close()
