@@ -20,7 +20,13 @@ The **PDF Summarizer** tool allows you to manage and summarize PDF files effecti
    cd PDF-Summarizer
    ```
 
-3. Run the installation script:
+3. Install the Dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run the installation script:
 
    ```bash
    python install.py
@@ -31,7 +37,7 @@ The **PDF Summarizer** tool allows you to manage and summarize PDF files effecti
    - Creates a standalone executable using PyInstaller.
    - Moves the executable to a globally accessible location (e.g., `/usr/local/bin/ospdf` on Unix/Linux).
 
-4. Confirm the installation by checking the tool's availability:
+5. Confirm the installation by checking the tool's availability:
 
    ```bash
    ospdf
