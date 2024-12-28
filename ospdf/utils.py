@@ -30,7 +30,7 @@ import json
 
 
 
-STATE_FILE = "state.json"
+STATE_FILE = ".state.json"
 
 def save_state(pdf_path, persist_state):
     """
