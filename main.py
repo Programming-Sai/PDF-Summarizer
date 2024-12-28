@@ -6,14 +6,62 @@ import sys
 import pkg_resources
 
 
-# from test2 import save_to_docx, create_header_footer
+
 
 
  
 def get_summary(doc, print_results=False, include_images=False, images_folder="tmp-images", show_progress=True, threshold=50, show_image_process=False):
+    """
+    Extracts a summarized view of a PDF document, including text highlights, headings, and optionally images.
+
+    Arguments:
+    + doc -- The PDF document object to process.
+    + print_results (bool) -- Whether to print intermediate results for debugging (default: False).
+    + include_images (bool) -- Whether to include images from the PDF pages (default: False).
+    + images_folder (str) -- The folder to save extracted images (default: "tmp-images").
+    + show_progress (bool) -- Whether to display progress messages for each page (default: True).
+    + threshold (int) -- Minimum similarity score for fuzzy matching between highlights and actual text (default: 50).
+    + show_image_process (bool) -- Whether to display intermediate image processing results (default: False).
+
+    Functionality:
+    1. **Text Processing:**
+    - Extracts the text from each page of the PDF.
+    - Identifies and extracts highlighted text from the page.
+    - Performs fuzzy matching to align the highlights with the main text, filtering matches based on a similarity threshold.
+
+    2. **Headings Processing:**
+    - Extracts potential headings from the page.
+    - Matches headings to the highlighted text to structure the results, inserting them at appropriate positions.
+
+    3. **Image Processing (Optional):**
+    - Converts the page into an image and displays it.
+    - Extracts images from the page, saves them in the specified folder, and optionally displays contours and captions.
+    - Allows user interaction for selecting captions and managing images.
+
+    4. **Results Compilation:**
+    - Constructs a structured summary for each page, including:
+        - Page number
+        - Highlighted text matches
+        - Original text and highlight counts
+        - Extracted headings
+        - Extracted images and captions (if enabled)
+    - Appends all results into a single list for the entire document.
+
+    5. **Progress and Debugging:**
+    - Prints progress messages and intermediate results (optional).
+
+    Returns:
+    + results -- A list containing the summarized text, headings, and images (if included) for the entire document.
+
+    Notes:
+    - Image and text extraction relies on helper functions such as `pdf_page_to_image`, `getTextFromPDFAsParagraphs`, `getHighlightedText`, `getImages`, `getHeadings`, and others.
+    - Requires the `cv2` library for image processing and the `fuzzywuzzy` library for text similarity scoring.
+    - Handles multi-page documents and includes functionality for user interaction in the image processing phase.
+    """
+
     results = []
 
-    # Process each page
+    # Processing each page
     for page_num in range(1, doc.page_count+1):
         print(f"\n[INFO] Processing page {page_num} of {doc.page_count}...") if show_progress else None
 
@@ -22,23 +70,23 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="t
         original_count = 0
         highlight_matches_count = 0
 
-        # Acquire an image version of the page
+        # Acquiring an image version of the page
         img = pdf_page_to_image(doc, page_num)
 
-        # Get the main text from the given page, for reference
+        # Geting the main text from the given page, for reference
         actual_page_text, actual_page_text_for_headings = getTextFromPDFAsParagraphs(doc, page_num)
         original_count = get_count(actual_page_text, original_count)
         displayResult("ORIGINAL TEXT", actual_page_text) if print_results else None
 
-        # Extract highlighted text on the page
+        # Extracting highlighted text on the page
         hText = getHighlightedText(doc, page_num, img, show_result_image=show_image_process, show_process=show_image_process)
         displayResult("HIGHLIGHTED TEXT", hText) if print_results else None
 
-        # Perform fuzzy matching between highlights and actual text
+        # Performing fuzzy matching between highlights and actual text
         for text in hText:
             highlight_matches.extend(process.extract(text, actual_page_text, scorer=fuzz.token_sort_ratio))
 
-        # Filter and sort matches
+        # Filter and sort matches to allow the main txt to appear in order
         highlight_matches = list(dict.fromkeys([match for match, score in highlight_matches if score >= threshold]))
         highlight_matches = sorted(highlight_matches, key=lambda x: actual_page_text.index(x))
         displayResult("HIGHLIGHTED TEXT MATCHES", highlight_matches) if print_results else None
@@ -90,30 +138,107 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="t
 
 
 
+# def home_screen():
+#     title = r'''
+#  _____                             _____ 
+# ( ___ )---------------------------( ___ )
+#  |   |                             |   | 
+#  |   |                      _  __  |   | 
+#  |   |   ___  ___ _ __   __| |/ _| |   | 
+#  |   |  / _ \/ __| '_ \ / _` | |_  |   | 
+#  |   | | (_) \__ \ |_) | (_| |  _| |   | 
+#  |   |  \___/|___/ .__/ \__,_|_|   |   | 
+#  |   |           |_|               |   | 
+#  |___|                             |___| 
+# (_____)---------------------------(_____)
+
+# '''
+
+
+#     # Get the terminal width
+#     terminal_width = os.get_terminal_size().columns
+
+#     # Split the title into individual lines
+#     title_lines = title.splitlines()
+
+#     # Center each line and print it
+#     for line in title_lines:
+#         print(line.center(terminal_width))
 
 
 
 
 
-# path = "test_pdfs/pages_28_to_31.pdf"
-# path = "test_pdfs/page_28.pdf"
-# path = "test_pdfs/page_31.pdf"
 
-# image_folder = "tmp-images"
+def home_screen():
+    """
+    Display the home screen of the OSPDF application, including a gradient ASCII 
+    title and a welcome message with an overview of the application's features.
+
+    The home screen displays:
+    - A gradient-colored ASCII title.
+    - A brief welcome message with the version and usage tips.
+    
+    This function will call `gradient_text` to apply a color gradient to both 
+    the ASCII art title and the welcome message text.
+
+    Example:
+    >>> home_screen()
+    Welcome to OSPDF!
+    Version: 0.0.1
+    OSPDF helps you manage and work with PDFs...
+    """
+    
+    title = r'''
+ _____                             _____ 
+( ___ )---------------------------( ___ )
+ |   |                             |   | 
+ |   |                      _  __  |   | 
+ |   |   ___  ___ _ __   __| |/ _| |   | 
+ |   |  / _ \/ __| '_ \ / _` | |_  |   | 
+ |   | | (_) \__ \ |_) | (_| |  _| |   | 
+ |   |  \___/|___/ .__/ \__,_|_|   |   | 
+ |   |           |_|               |   | 
+ |___|                             |___| 
+(_____)---------------------------(_____)
+'''
+    
+    # Apply the gradient to the ASCII art
+    gradient_title = gradient_text(title, [196, 214, 226])
+    title_lines = gradient_title.splitlines()
+    for line in title_lines:
+        print(line)
+
+    welcome_message = '''
+Welcome to OSPDF!
+
+Version: 0.0.1
+
+OSPDF helps you manage and work with PDFs. Here are some of the things you can do:
+- Summarize PDF content based on highlighted text.
+- Split a PDF into individual pages or ranges.
+- Merge multiple PDFs into one.
+- Convert a PDF page into an image.
+
+Tips
+------
+- Use `init` so that you would not need to state the input file every time you want to do an operation.
+- You can reset or clear you session by running `ospdf init -r | --reset-state`.
+- Use the -h | --help when in doubt or confused.
+    '''
+
+    gradient_title = gradient_text(welcome_message, [211, 220, 228])
+    title_lines = gradient_title.splitlines()
+    for line in title_lines:
+        print(line)
 
 
-
-# # Example results
-
-
-# # saveText(results, "FINAL_RESULT.txt")
-# save_to_pdf(results, "test_pdfs/OUTPUT.pdf")
 
 
 
 if __name__ == '__main__':
 
-    parser = ag.ArgumentParser(description='Manage and summarize PDF files effectively with custom commands.')
+    parser = ag.ArgumentParser(prog='ospdf', description='Manage and summarize PDF files effectively with custom commands.')
 
     # parser.add_argument('-v', '--version', action='version', version=f"%{parser.prog}s {pkg_resources.get_distribution('ospdf').version}")0.0.1'
     parser.add_argument('-v', '--version', action='version', version=f"{parser.prog} {'0.0.1'}")
@@ -163,6 +288,10 @@ if __name__ == '__main__':
     pdf2img_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the input PDF file for page-to-image conversion. Overrides saved state if provided.')
     pdf2img_parser.add_argument('output_img_path', type=str, help='Path to save the converted image file.')
     pdf2img_parser.add_argument('page_number', type=int, default=None, help='The page number to extract and convert to an image.')
+
+
+
+    parser.set_defaults(func=home_screen)
 
 
     args = parser.parse_args()
@@ -442,7 +571,7 @@ if __name__ == '__main__':
                 print(f"Error: Failed to create directory '{directory}'. {e}")
                 sys.exit(1)
         
-        page_number = None  # Set default value to None
+        page_number = None  
 
         if args.page_number:
             page_number_str = str(args.page_number)
@@ -457,17 +586,12 @@ if __name__ == '__main__':
             print("Page Number must be greater than 1")
             sys.exit(1)
 
-
-
-        # print(f"\nInput PDF: {input_pdf_file}\nOutput Folder: {output_pdf_path}\nPage Number: {page_number}\n")
-
-        # try:
         save_image(pdf_page_to_image(fitz.open(input_pdf_file), page_number), output_pdf_path)
-        # except Exception as e:
-            # print(f"Error: Something went wrong: {e}")
+        
 
         if not persist_state: 
             print("Clearing state...")
             clear_state()
-        else:
-            print("State is preserved.")
+
+
+    args.func()
