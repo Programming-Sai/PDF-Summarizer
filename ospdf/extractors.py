@@ -1,4 +1,4 @@
-from utils import *
+from ospdf.utils import *
 
 def getHeadings(paragraphs):
     """

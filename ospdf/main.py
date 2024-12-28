@@ -1,5 +1,5 @@
-from utils import *
-from extractors import *
+from ospdf.utils import *
+from ospdf.extractors import *
 from thefuzz import fuzz, process
 import argparse as ag
 import sys
@@ -138,33 +138,6 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="t
 
 
 
-# def home_screen():
-#     title = r'''
-#  _____                             _____ 
-# ( ___ )---------------------------( ___ )
-#  |   |                             |   | 
-#  |   |                      _  __  |   | 
-#  |   |   ___  ___ _ __   __| |/ _| |   | 
-#  |   |  / _ \/ __| '_ \ / _` | |_  |   | 
-#  |   | | (_) \__ \ |_) | (_| |  _| |   | 
-#  |   |  \___/|___/ .__/ \__,_|_|   |   | 
-#  |   |           |_|               |   | 
-#  |___|                             |___| 
-# (_____)---------------------------(_____)
-
-# '''
-
-
-#     # Get the terminal width
-#     terminal_width = os.get_terminal_size().columns
-
-#     # Split the title into individual lines
-#     title_lines = title.splitlines()
-
-#     # Center each line and print it
-#     for line in title_lines:
-#         print(line.center(terminal_width))
-
 
 
 
@@ -233,10 +206,7 @@ Tips
         print(line)
 
 
-
-
-
-if __name__ == '__main__':
+def main():
 
     parser = ag.ArgumentParser(prog='ospdf', description='Manage and summarize PDF files effectively with custom commands.')
 
@@ -595,3 +565,8 @@ if __name__ == '__main__':
 
 
     args.func()
+
+
+
+if __name__ == '__main__':
+    main()
