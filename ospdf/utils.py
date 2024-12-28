@@ -240,7 +240,7 @@ def roiDisplay(roiList, show_process=False):
         cv2.imshow(f"Cropped Image {x}", roi) if show_process else ""
 
 
-def save_to_txt(highlightedText, result_name, clear_after_wards=True, images_folder_path='tmp-images'):
+def save_to_txt(highlightedText, result_name, clear_after_wards=True, images_folder_path='.ospdf-tmp-images'):
     """
     Saves a list of highlighted text to a specified text file and optionally clears the images folder.
 
@@ -248,7 +248,7 @@ def save_to_txt(highlightedText, result_name, clear_after_wards=True, images_fol
     highlightedText -- A list of strings representing the highlighted text to be saved.
     result_name -- The name of the output text file. Defaults to "Result.txt" if not provided.
     clear_after_wards -- A boolean flag indicating whether to clear the images folder after saving. Defaults to True.
-    images_folder_path -- Path to the images folder to clear, if applicable. Defaults to 'tmp-images'.
+    images_folder_path -- Path to the images folder to clear, if applicable. Defaults to '.ospdf-tmp-images'.
 
     Functionality:
     - Writes each entry of `highlightedText` to a new line in the specified file.
@@ -428,14 +428,14 @@ def save_image(image, output_image_path):
 
 
 
-def save_to_pdf(results, filename, images_folder_path='tmp-images', clear_after_wards=True):
+def save_to_pdf(results, filename, images_folder_path='.ospdf-tmp-images', clear_after_wards=True):
     """
     Saves text and images as a formatted PDF document.
 
     Arguments:
     results -- A list containing text, headings, and image file paths to include in the PDF.
     filename -- The name of the output PDF file.
-    images_folder_path -- Path to the folder containing images, if applicable. Defaults to 'tmp-images'.
+    images_folder_path -- Path to the folder containing images, if applicable. Defaults to '.ospdf-tmp-images'.
     clear_after_wards -- A boolean flag to clear the images folder after saving. Defaults to True.
 
     Functionality:
@@ -1098,14 +1098,14 @@ def create_header_footer_for_docx(doc, item, is_footer=False):
 
 
 
-def save_to_docx(results, filename, images_folder_path='tmp-images', clear_after_wards=True):
+def save_to_docx(results, filename, images_folder_path='.ospdf-tmp-images', clear_after_wards=True):
     """
     Saves a list of results into a Word document with formatting and optional images.
 
     Arguments:
     + results -- A list of strings or file paths to add to the document. Supports headings, text, images, and captions.
     + filename -- The path to save the resulting Word document.
-    + images_folder_path -- The path to the folder containing images to embed (default: 'tmp-images').
+    + images_folder_path -- The path to the folder containing images to embed (default: '.ospdf-tmp-images').
     + clear_after_wards -- Boolean flag to delete the contents of `images_folder_path` after saving the document (default: True).
 
     Functionality:
@@ -1254,3 +1254,18 @@ def gradient_text(text, colors):
             colored_line += colored_char
         colored_text.append(colored_line)
     return "\n".join(colored_text)
+
+
+
+def check_and_create_folder(folder_name):
+    # Get the current working directory
+    current_directory = os.getcwd()
+    
+    # Define the full path to the folder
+    folder_path = os.path.join(current_directory, folder_name)
+    
+    # Check if the folder exists
+    if not os.path.exists(folder_path):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder_path)
+        print(f"Folder '{folder_name}' created.")

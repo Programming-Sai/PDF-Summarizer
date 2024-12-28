@@ -10,7 +10,7 @@ import pkg_resources
 
 
  
-def get_summary(doc, print_results=False, include_images=False, images_folder="tmp-images", show_progress=True, threshold=50, show_image_process=False):
+def get_summary(doc, print_results=False, include_images=False, images_folder=".ospdf-tmp-images", show_progress=True, threshold=50, show_image_process=False):
     """
     Extracts a summarized view of a PDF document, including text highlights, headings, and optionally images.
 
@@ -18,7 +18,7 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="t
     + doc -- The PDF document object to process.
     + print_results (bool) -- Whether to print intermediate results for debugging (default: False).
     + include_images (bool) -- Whether to include images from the PDF pages (default: False).
-    + images_folder (str) -- The folder to save extracted images (default: "tmp-images").
+    + images_folder (str) -- The folder to save extracted images (default: ".ospdf-tmp-images").
     + show_progress (bool) -- Whether to display progress messages for each page (default: True).
     + threshold (int) -- Minimum similarity score for fuzzy matching between highlights and actual text (default: 50).
     + show_image_process (bool) -- Whether to display intermediate image processing results (default: False).
@@ -208,6 +208,8 @@ Tips
 
 def main():
 
+    check_and_create_folder(".ospdf-tmp-images")
+
     parser = ag.ArgumentParser(prog='ospdf', description='Manage and summarize PDF files effectively with custom commands.')
 
     # parser.add_argument('-v', '--version', action='version', version=f"%{parser.prog}s {pkg_resources.get_distribution('ospdf').version}")0.0.1'
@@ -364,7 +366,7 @@ def main():
             doc = fitz.open(pdf_path)
             print(pdf, txt, docx)
             
-            results = get_summary(doc, include_images=include_images, images_folder="tmp-images", print_results=print_results, show_progress=show_progress, threshold=args.threshold, show_image_process=show_image_process)
+            results = get_summary(doc, include_images=include_images, images_folder=".ospdf-tmp-images", print_results=print_results, show_progress=show_progress, threshold=args.threshold, show_image_process=show_image_process)
             if docx:
                 save_to_docx(results, output_path)
             elif txt:
@@ -377,8 +379,6 @@ def main():
             if not persist_state: 
                 print("Clearing state...")
                 clear_state()
-            else:
-                print("State is preserved.")
 
 
 
@@ -445,20 +445,14 @@ def main():
         if not args.start_page and not args.end_page:
             print("Both Start and End Page Cannot be Empty")
             sys.exit(1)
-
-
-
-        # print(f"\nInput PDF: {input_pdf_file}\nOutput PDF: {output_pdf_file}\nStart Page: {args.start_page}\nEnd Page: {args.end_page}\n")
         
         split_pdf(input_pdf_file, output_pdf_file, start_page=start_page, end_page=end_page)
-        print(f"Successfull Split {input_pdf_file} and is saved at {output_pdf_file}")
+        print(f"Successfully Split {input_pdf_file} and is saved at {output_pdf_file}")
 
 
         if not persist_state: 
             print("Clearing state...")
             clear_state()
-        else:
-            print("State is preserved.")
 
 
 
@@ -485,9 +479,6 @@ def main():
         if not output_pdf_file.lower().endswith('.pdf'):
             print("Error: The output file must have a `.pdf` extension.")
             sys.exit(1)
-        
-
-        # print(f"\nOutput Pdf Path: {output_pdf_file}\nInput Pdf Paths: {args.input_pdf_files}\n")
 
 
         merge_pdfs(output_pdf_file, *args.input_pdf_files)
@@ -564,7 +555,8 @@ def main():
             clear_state()
 
 
-    args.func()
+    else:
+        args.func()
 
 
 
