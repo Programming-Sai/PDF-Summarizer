@@ -19,6 +19,45 @@ import threading
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+import json
+
+
+
+
+
+
+
+
+
+
+STATE_FILE = "state.json"
+
+def save_state(pdf_path, persist_state):
+    state = {
+        "pdf_path": pdf_path,
+        "persist_state": persist_state
+    }
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f)  
+
+def load_state():
+    try:
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+        pdf_path = state.get("pdf_path")
+        persist_state = state.get("persist_state")
+        return pdf_path, persist_state
+    except FileNotFoundError:
+        raise ValueError("State file not found.")
+    except json.JSONDecodeError:
+        raise ValueError("Error decoding state file.")
+
+def clear_state():
+    if os.path.exists(STATE_FILE):
+        os.remove(STATE_FILE)
+        print("\nCurrent State Cleared\n")
+
+
 
 
 
