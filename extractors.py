@@ -33,7 +33,7 @@ def getImageCaption(paragraphs):
 
 
 
-def getHighlightedText(doc, page_number, image, show_process=False, show_result_image=True, save_extracted_text=True):
+def getHighlightedText(doc, page_number, image, show_process=False, show_result_image=True):
     hsv = [0, 65, 59, 255, 0, 255] 
 
     # Step One
@@ -66,7 +66,6 @@ def getHighlightedText(doc, page_number, image, show_process=False, show_result_
     highlightedText = []
     for x, roi in enumerate(roiList):
         highlightedText.append(get_text_from_bbox(doc, page_number, roi))
-    saveText(highlightedText) if save_extracted_text else ""
 
     # Step Seven
     if show_result_image:
@@ -89,7 +88,7 @@ def getHighlightedText(doc, page_number, image, show_process=False, show_result_
    
 
 
-def getImages(image, show_contours=True, show_result=True, save_result=True):
+def getImages(image, images_folder, show_contours=True, show_result=True, save_result=True):
 
     # Load the image
     if isinstance(image, bytes):
@@ -110,11 +109,14 @@ def getImages(image, show_contours=True, show_result=True, save_result=True):
     cv2.imshow("Detected Images", imgContours) if show_contours else None
 
     # Save or display each detected image region
+
     for i, croppedImage in enumerate(images):
         cv2.imshow(f"Image {i+1}", croppedImage) if show_result else ""
-        cv2.imwrite(f"images/images/extracted_image_{i+1}-{int(time.time())}.png", croppedImage)  if save_result else ""
-
+        cv2.imwrite(f"{images_folder}/extracted_image_{i+1}-{int(time.time())}.png", croppedImage)  if save_result else ""
     cv2.waitKey(0) if show_contours else None
+    
     cv2.destroyAllWindows()
 
 
+
+# getImages()

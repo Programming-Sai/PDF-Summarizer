@@ -132,11 +132,12 @@ def roiDisplay(roiList, show_process=False):
         cv2.imshow(f"Cropped Image {x}", roi) if show_process else ""
 
 
-def saveText(highlightedText, result_name):
+def save_to_txt(highlightedText, result_name, clear_after_wards=True, images_folder_path='tmp-images'):
     with open(result_name or "Result.txt", 'w') as f:
         for text in highlightedText:
             f.writelines(f'\n{text}')
-
+    if clear_after_wards:
+        clear_images_folder(images_folder_path)
 
 
 def stackImages(scale, imgArray):
@@ -173,7 +174,7 @@ def stackImages(scale, imgArray):
     return ver
 
 
-def split_pdf(input_pdf, output_folder, start_page=None, end_page=None):
+def split_pdf(input_pdf, output_path, start_page=None, end_page=None):
     # Open the input PDF
     doc = fitz.open(input_pdf)
 
@@ -184,7 +185,7 @@ def split_pdf(input_pdf, output_folder, start_page=None, end_page=None):
         new_doc.insert_pdf(doc, from_page=start_page - 1, to_page=start_page - 1)
         
         # Save the new PDF with the page number
-        new_doc.save(f"{output_folder}/page_{start_page}.pdf")
+        new_doc.save(output_path)
         new_doc.close()
         doc.close()
         return 
@@ -202,7 +203,7 @@ def split_pdf(input_pdf, output_folder, start_page=None, end_page=None):
         new_doc.insert_pdf(doc, from_page=start_page, to_page=end_page)
 
         # Save the new PDF with the page range
-        new_doc.save(f"{output_folder}/pages_{start_page + 1}_to_{end_page + 1}.pdf")
+        new_doc.save(output_path)
         new_doc.close()
         doc.close()
         return 
@@ -237,7 +238,10 @@ def save_image(image, output_image_path):
     :param image: The PIL Image object to save.
     :param output_image_path: The file path where the image should be saved.
     """
-    if image:
+    if image is not None:
+        # Convert numpy array (OpenCV format) to PIL.Image if needed
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB
         image.save(output_image_path)
         print(f"Image saved to {output_image_path}")
     else:
@@ -245,7 +249,7 @@ def save_image(image, output_image_path):
 
 
 
-def save_to_pdf(results, filename, images_folder_path='images/images', clear_after_wards=True):
+def save_to_pdf(results, filename, images_folder_path='tmp-images', clear_after_wards=True):
     # Create the PDF document
     doc = SimpleDocTemplate(filename, pagesize=letter)
     elements = []
@@ -474,11 +478,18 @@ def mouse_callback(event, x, y, flags, param):
 
 # Function to display images in a grid
 def display_images_grid(images, paths, window_name="Image Grid", cell_size=(200, 200), padding=10, close_image_window=False, pdf_image_path=''):
+    
+    if not images:
+        print("No images to display.")
+        return ''
+    
+    print(f"Total images to display: {len(images)}")
+    
     rows = int(np.ceil(len(images) ** 0.5))  # Determine grid size
     cols = rows
 
-    grid_height = rows * cell_size[1] + (rows - 1) * padding
-    grid_width = cols * cell_size[0] + (cols - 1) * padding
+    grid_height = max(10, rows * cell_size[1] + (rows - 1) * padding)
+    grid_width = max(10, cols * cell_size[0] + (cols - 1) * padding)
 
     background_color = (75, 0, 130)  # RGB for light blue
     grid_img = np.full((grid_height, grid_width, 3), background_color, dtype=np.uint8)
@@ -488,6 +499,9 @@ def display_images_grid(images, paths, window_name="Image Grid", cell_size=(200,
 
     grid_coords = []  # List to store the coordinates for each image cell
     for idx, img in enumerate(images):
+        if img is None:
+            print(f"Error: Image at {paths[idx]} could not be loaded.")
+            continue
         resized_img = cv2.resize(img, cell_size)  # Resize the image to fit in the cell
         row_idx = idx // cols
         col_idx = idx % cols
@@ -500,6 +514,10 @@ def display_images_grid(images, paths, window_name="Image Grid", cell_size=(200,
         grid_img[y_start:y_end, x_start:x_end] = resized_img  # Place image in the grid
         grid_coords.append(((y_start, y_end), (x_start, x_end), paths[idx]))  # Store image coordinates and path
 
+    if not grid_coords:
+        print("No images were placed in the grid.")
+        return ''
+    
     # Set up the window and mouse callback
     cv2.namedWindow(window_name)
     param = {"grid_coords": grid_coords, "img_paths": paths, "close_flag": close_image_window, "pdf_image_path": pdf_image_path}
@@ -638,7 +656,7 @@ def create_header_footer_for_docx(doc, item, is_footer=False):
 
 
 
-def save_to_docx(results, filename, images_folder_path='images/images', clear_after_wards=True):
+def save_to_docx(results, filename, images_folder_path='tmp-images', clear_after_wards=True):
     # Create the Word document
     doc = Document()
 

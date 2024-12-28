@@ -3,12 +3,14 @@ from extractors import *
 from thefuzz import fuzz, process
 import argparse as ag
 import sys
+import pkg_resources
+
 
 # from test2 import save_to_docx, create_header_footer
 
 
  
-def get_summary(doc, print_results=False, include_images=False, images_folder="images/images", show_progress=True, threshold=50, show_image_process=False):
+def get_summary(doc, print_results=False, include_images=False, images_folder="tmp-images", show_progress=True, threshold=50, show_image_process=False):
     results = []
 
     # Process each page
@@ -29,7 +31,7 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
         displayResult("ORIGINAL TEXT", actual_page_text) if print_results else None
 
         # Extract highlighted text on the page
-        hText = getHighlightedText(doc, page_num, img, show_result_image=show_image_process, show_process=show_image_process, save_extracted_text=False)
+        hText = getHighlightedText(doc, page_num, img, show_result_image=show_image_process, show_process=show_image_process)
         displayResult("HIGHLIGHTED TEXT", hText) if print_results else None
 
         # Perform fuzzy matching between highlights and actual text
@@ -50,7 +52,7 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27 or key in (ord('q'), ord('x')):  # Press ESC to close or click on an option
                     break
-            getImages(img, show_contours=show_image_process, show_result=show_image_process)
+            getImages(img, images_folder, show_contours=show_image_process, show_result=show_image_process)
             possible_captions = getImageCaption(actual_page_text_for_headings)
             images, paths = load_images_from_folder(images_folder)
             image_path_result = display_images_grid(images, paths, close_image_window=False, pdf_image_path='')
@@ -97,12 +99,11 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 # path = "test_pdfs/page_28.pdf"
 # path = "test_pdfs/page_31.pdf"
 
-# image_folder = "images/images"
+# image_folder = "tmp-images"
 
 
 
 # # Example results
-# results = get_summary(doc, include_images=True, images_folder=image_folder, print_results=False, show_progress=True, isPDF=True, threshold=60)
 
 
 # # saveText(results, "FINAL_RESULT.txt")
@@ -112,64 +113,56 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="i
 
 if __name__ == '__main__':
 
-    parser = ag.ArgumentParser(description='OS PDF Summarizer.')
+    parser = ag.ArgumentParser(description='Manage and summarize PDF files effectively with custom commands.')
+
+    # parser.add_argument('-v', '--version', action='version', version=f"%{parser.prog}s {pkg_resources.get_distribution('ospdf').version}")0.0.1'
+    parser.add_argument('-v', '--version', action='version', version=f"{parser.prog} {'0.0.1'}")
+
 
     sub_parser = parser.add_subparsers(dest='command', required=False, parser_class=ag.ArgumentParser)
 
 
-    init_parser = sub_parser.add_parser('init', help='Initialize with a PDF file path.')
-    # init_parser.add_argument('pdf_file', type=str, help='Path to the PDF file.')
-    init_parser.add_argument('pdf_file', nargs='?', default='', type=str, help='Path to the PDF file.')
-    init_parser.add_argument('-d','--dont-persist-state', action='store_true', help='Determins if to persist the current state or not.')
-    init_parser.add_argument('-r','--reset-state', action='store_true', help='Determins if to reset the current state or not.')
+    init_parser = sub_parser.add_parser('init', help='Set up the tool with a specific PDF file and optionally adjust its state.')
+
+    init_parser.add_argument('pdf_file', nargs='?', default='', type=str, help='Path to the target PDF file to be used. Leave empty to use the current state.')
+    init_parser.add_argument('-d','--dont-persist-state', action='store_true', help='Specify if the current state should not be saved. By default, the state will persist.')
+    init_parser.add_argument('-r','--reset-state', action='store_true', help='Reset the saved state to start fresh with the specified or default PDF file.')
 
 
+    summariser_parser = sub_parser.add_parser('summarize', help='Summarize PDF content based on highlighted text.', description='Use this command to generate summaries from highlighted sections of a PDF. You can include images, customize the output format, and control various processing options.')
 
-    summariser_parser = sub_parser.add_parser('summarize', help='Command to summmarize pdf content based on its highlighted text', description='Command to summmarize pdf content based on its highlighted text')
-
-
-    summariser_parser.add_argument('-i', '--include-images', action='store_true', help='Determines If images should be included in the pdf or docx result')
-    summariser_parser.add_argument('-f', '--images-folder', type=str, help='The path to the folder holding the images.')
-    summariser_parser.add_argument('-o', '--output-path', type=str, help='The path to save the result of the summarisation, if any')
-    summariser_parser.add_argument('-u', '--input-path', type=str, help='The path to get the pdf from for summarisation')
-    summariser_parser.add_argument('-p', '--print-results', action='store_true', help='Determins if the result for the entire operation should be displayed or not.')
-    summariser_parser.add_argument('-s', '--show-progress', action='store_true', help='Determins If the current progress of the entire operations should be shown in the terminal or not.')
-    summariser_parser.add_argument('-a', '--show-image-process', action='store_true', help='Determins If All the images are shown as the processing is done. enable this wisely')
-    summariser_parser.add_argument('--pdf', action='store_true', help='Determins whether to save the work as a pdf or not')
-    summariser_parser.add_argument('--txt', action='store_true', help='Determins whether to save the work as a text file or not')
-    summariser_parser.add_argument('--docx', action='store_true', help='Determins whether to save the work as a word file or not')
-    summariser_parser.add_argument('-v', '--verbose', action='store_true', help='Allows all debug and print statements to be displayed.')
-    summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='(0-100) Accuracy level for text summarization.')
+    summariser_parser.add_argument('-i', '--include-images', action='store_true', help='Include images from the PDF in the summary output (PDF or DOCX formats).')
+    summariser_parser.add_argument('-o', '--output-path', type=str, help='Path to save the summary file. Supports PDF, DOCX, or TXT formats based on selected options.')
+    summariser_parser.add_argument('-u', '--input-path', type=str, help='Path to the input PDF file for summarization. Overrides any saved state.')
+    summariser_parser.add_argument('-p', '--print-results', action='store_true', help='Display the summarization results directly in the terminal.')
+    summariser_parser.add_argument('-s', '--show-progress', action='store_true', help='Display progress updates in the terminal during summarization.')
+    summariser_parser.add_argument('-a', '--show-image-process', action='store_true', help='Preview each image during processing. Use cautiously as it may slow down operations and clutter the screen.')
+    summariser_parser.add_argument('--pdf', action='store_true', help='Save the summary as a PDF file.')
+    summariser_parser.add_argument('--txt', action='store_true', help='Save the summary as a plain text file.')
+    summariser_parser.add_argument('--docx', action='store_true', help='Save the summary as a Word document.')
+    summariser_parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose mode to display all debug and status messages.')
+    summariser_parser.add_argument('-t', '--threshold', type=int, default=50, help='Set the summarization accuracy threshold (0-100). Higher values prioritize precision.')
 
 
+    split_parser = sub_parser.add_parser('split', help='Split a PDF to extract a single page or a range of pages.', description='Use this command to split a PDF file, extracting either a single page or a specified range of pages into a new file.')
+
+    split_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the input PDF file. Overrides any saved state if provided.')
+    split_parser.add_argument('output_pdf_file', type=str, help='Path to save the extracted pages as a new PDF file.')
+    split_parser.add_argument('-s', '--start-page', type=int, default=None, help='Specify the starting page number for extraction. Defaults to the first page.')
+    split_parser.add_argument('-e', '--end-page', type=int, default=None, help='Specify the ending page number for extraction. Defaults to the last page.')
 
 
-    split_parser = sub_parser.add_parser('split', help='Command USed to Split A single Pdf into get a single page, or a range of pages.', description='Command USed to Split A single Pdf into get a single page, or a range of pages.')
+    merge_parser = sub_parser.add_parser('merge', help='Merge multiple PDF files into a single PDF.', description='Combine multiple PDF files into one. Specify the output file and input files to merge.')
 
-    split_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the PDF file.')
-    split_parser.add_argument('output_pdf_file', type=str, help='Path to the PDF file.')
-    split_parser.add_argument('-s', '--start-page', type=int, default=None, help='This determines the starting range for the pdf splitting')
-    split_parser.add_argument('-e', '--end-page', type=int, default=None, help='This determines the end range for the pdf splitting')
+    merge_parser.add_argument('output_pdf_file', help="Path to save the merged PDF file.")
+    merge_parser.add_argument('input_pdf_files', nargs='*', help="Paths to the input PDF files to be merged. Provide two or more PDF file paths.")
 
 
-
-
-    merge_parser = sub_parser.add_parser('merge', help='This would merge multiple pdfs into a single one.', description='This would merge multiple pdfs into a single one.')
-
-
-    merge_parser.add_argument('output_pdf_file', help="Path to the output PDF file")
-    merge_parser.add_argument('input_pdf_files', nargs='*', help="Paths to the input PDF files for merging")
-
-
-
-
-    pdf2img_parser = sub_parser.add_parser('pdf2img', help='Converts a single pdf page to a pdf', description='Converts a single pdf page to a pdf')
-
-    pdf2img_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the PDF file for image conversion.')
-    pdf2img_parser.add_argument('output_pdf_file', type=str, help='Path to the Output PDF file.')
-    pdf2img_parser.add_argument('page_number', type=int, default=None, help='This determines the end range for the pdf splitting')
-
-
+    pdf2img_parser = sub_parser.add_parser('pdf2img', help='Convert a single PDF page to an image.', description='Extract a specific page from a PDF and convert it into an image file.')
+  
+    pdf2img_parser.add_argument('input_pdf_file', nargs='?', type=str, help='Path to the input PDF file for page-to-image conversion. Overrides saved state if provided.')
+    pdf2img_parser.add_argument('output_img_path', type=str, help='Path to save the converted image file.')
+    pdf2img_parser.add_argument('page_number', type=int, default=None, help='The page number to extract and convert to an image.')
 
 
     args = parser.parse_args()
@@ -217,8 +210,7 @@ if __name__ == '__main__':
                     print("No input file stated")
                     sys.exit(1)
             include_images=False
-            images_folder = "images/images"
-            output_path = "test_pdfs/OUTPUT.pdf"
+            output_path = "OS_PDF_SUMMARIZATION_OUTPUT.pdf"
             print_results = False
             show_progress = True
             show_image_process = False
@@ -229,21 +221,35 @@ if __name__ == '__main__':
                 pdf_path = args.input_path
             if args.include_images:
                 include_images = True
-            if args.images_folder:
-                images_folder = args.images_folder
-            if args.output_path:
-                output_path = args.output_path
+
+            output_path = args.output_path or output_path
+            output_dir = os.path.dirname(output_path) 
+            if output_dir and not os.path.exists(output_dir):
+                print(f"Error: The directory '{output_dir}' doesn't exist.")
+                sys.exit(1)
+            if not output_path.lower().endswith('.pdf') and args.pdf:
+                print("Error: The output file must have a `.pdf` extension.")
+                sys.exit(1)
+            if not output_path.lower().endswith('.docx') and args.docx:
+                print("Error: The output file must have a `.docx` extension.")
+                sys.exit(1)
+            if not output_path.lower().endswith('.txt') and args.txt:
+                print("Error: The output file must have a `.txt` extension.")
+                sys.exit(1)
             if args.print_results:
                 print_results = True
             if args.show_progress:
                 show_progress = False
             if args.show_image_process:
-                show_image_process = False
+                show_image_process = True
             if args.verbose:
                 print_results = True
                 show_progress = True
                 show_image_process = True
-
+            if args.threshold is not None:
+                if not  0<= args.threshold <= 100:
+                    print(f"Error: {args.threshold} is invalid. Threshold must be between 0 and 100.")
+                    sys.exit(1)
 
             if args.txt:
                 txt = True
@@ -256,10 +262,16 @@ if __name__ == '__main__':
 
 
 
-            # results = get_summary(doc, include_images=include_images, images_folder=images_folder, print_results=print_results, show_progress=show_progress, isPDF=pdf, threshold=threshold)
             doc = fitz.open(pdf_path)
-
-            print(f"\nInput_pdf: {pdf_path}\nInclude Images?: {include_images}\nImages Folder: {images_folder}\nOutput Folder: {output_path}\nPrint Results?: {print_results}\nShow Progress?: {show_progress}\nThreshold: {args.threshold}\nFile Output Type: {'pdf' if pdf else 'txt' if txt else 'docx' if docx else ''}\n\nState Persistance: {persist_state}\nVerbose Mode: {args.verbose}\n")
+            print(pdf, txt, docx)
+            
+            results = get_summary(doc, include_images=include_images, images_folder="tmp-images", print_results=print_results, show_progress=show_progress, threshold=args.threshold, show_image_process=show_image_process)
+            if docx:
+                save_to_docx(results, output_path)
+            elif txt:
+                save_to_txt(results, output_path)
+            else:
+                save_to_pdf(results, output_path) 
             
             doc.close()
 
@@ -272,7 +284,10 @@ if __name__ == '__main__':
 
 
 
+
     elif args.command == 'split':
+        start_page = None
+        end_page = None
         try:
             # Attempt to load the input PDF file path from the saved state
             input_pdf_file, persist_state = load_state()
@@ -332,7 +347,13 @@ if __name__ == '__main__':
             print("Both Start and End Page Cannot be Empty")
             sys.exit(1)
 
-        print(f"\nInput PDF: {input_pdf_file}\nOutput PDF: {output_pdf_file}\nStart Page: {args.start_page}\nEnd Page: {args.end_page}\n")
+
+
+        # print(f"\nInput PDF: {input_pdf_file}\nOutput PDF: {output_pdf_file}\nStart Page: {args.start_page}\nEnd Page: {args.end_page}\n")
+        
+        split_pdf(input_pdf_file, output_pdf_file, start_page=start_page, end_page=end_page)
+        print(f"Successfull Split {input_pdf_file} and is saved at {output_pdf_file}")
+
 
         if not persist_state: 
             print("Clearing state...")
@@ -366,9 +387,11 @@ if __name__ == '__main__':
             print("Error: The output file must have a `.pdf` extension.")
             sys.exit(1)
         
-        print(f"\nOutput Pdf Path: {output_pdf_file}\nInput Pdf Paths: {args.input_pdf_files}\n")
+
+        # print(f"\nOutput Pdf Path: {output_pdf_file}\nInput Pdf Paths: {args.input_pdf_files}\n")
 
 
+        merge_pdfs(output_pdf_file, *args.input_pdf_files)
 
 
     elif args.command == 'pdf2img':
@@ -393,14 +416,30 @@ if __name__ == '__main__':
             print(f"Error: {input_pdf_file} is not a PDF file. It must end with `.pdf`")
             sys.exit(1)
         
-        output_pdf_folder = args.output_pdf_file
-        if not os.path.isdir(output_pdf_folder):
-            # Check if the directory exists, if not create it
+        output_pdf_path = args.output_img_path
+        if os.path.isdir(output_pdf_path):
+            # If the path is a directory and does not have a file name, ask for a valid file name
+            print(f"Error: '{output_pdf_path}' is a directory. Please provide a full file path including the file name and extension (e.g., 'output_image.png').")
+            sys.exit(1)
+
+        if os.path.basename(output_pdf_path) == output_pdf_path:  # No directory provided, only a file name
+            output_pdf_path = os.path.join(os.getcwd(), output_pdf_path)
+            print(f"Saving image to the current directory: {output_pdf_path}")
+
+        # Check if the file path ends with a valid image extension
+        valid_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif']
+        if not any(output_pdf_path.lower().endswith(ext) for ext in valid_extensions):
+            print("Error: Please provide a valid file name with a supported image extension (e.g., .png, .jpg).")
+            sys.exit(1)
+
+        # If the directory doesn't exist, create it
+        directory = os.path.dirname(output_pdf_path)
+        if not os.path.isdir(directory):
             try:
-                os.makedirs(output_pdf_folder)
-                print(f"Directory '{output_pdf_folder}' created.")
+                os.makedirs(directory)
+                print(f"Directory '{directory}' created.")
             except Exception as e:
-                print(f"Error: Failed to create directory '{output_pdf_folder}'. {e}")
+                print(f"Error: Failed to create directory '{directory}'. {e}")
                 sys.exit(1)
         
         page_number = None  # Set default value to None
@@ -418,8 +457,14 @@ if __name__ == '__main__':
             print("Page Number must be greater than 1")
             sys.exit(1)
 
-        # Print input PDF, output folder, and page number (if provided)
-        print(f"\nInput PDF: {input_pdf_file}\nOutput Folder: {output_pdf_folder}\nPage Number: {page_number}\n")
+
+
+        # print(f"\nInput PDF: {input_pdf_file}\nOutput Folder: {output_pdf_path}\nPage Number: {page_number}\n")
+
+        # try:
+        save_image(pdf_page_to_image(fitz.open(input_pdf_file), page_number), output_pdf_path)
+        # except Exception as e:
+            # print(f"Error: Something went wrong: {e}")
 
         if not persist_state: 
             print("Clearing state...")
