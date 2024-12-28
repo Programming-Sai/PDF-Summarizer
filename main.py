@@ -138,34 +138,6 @@ def get_summary(doc, print_results=False, include_images=False, images_folder="t
 
 
 
-# def home_screen():
-#     title = r'''
-#  _____                             _____ 
-# ( ___ )---------------------------( ___ )
-#  |   |                             |   | 
-#  |   |                      _  __  |   | 
-#  |   |   ___  ___ _ __   __| |/ _| |   | 
-#  |   |  / _ \/ __| '_ \ / _` | |_  |   | 
-#  |   | | (_) \__ \ |_) | (_| |  _| |   | 
-#  |   |  \___/|___/ .__/ \__,_|_|   |   | 
-#  |   |           |_|               |   | 
-#  |___|                             |___| 
-# (_____)---------------------------(_____)
-
-# '''
-
-
-#     # Get the terminal width
-#     terminal_width = os.get_terminal_size().columns
-
-#     # Split the title into individual lines
-#     title_lines = title.splitlines()
-
-#     # Center each line and print it
-#     for line in title_lines:
-#         print(line.center(terminal_width))
-
-
 
 
 
@@ -236,7 +208,9 @@ Tips
 
 
 
-if __name__ == '__main__':
+def main():
+
+    check_and_create_folder(".ospdf-tmp-images")
 
     parser = ag.ArgumentParser(prog='ospdf', description='Manage and summarize PDF files effectively with custom commands.')
 
@@ -394,7 +368,7 @@ if __name__ == '__main__':
             doc = fitz.open(pdf_path)
             print(pdf, txt, docx)
             
-            results = get_summary(doc, include_images=include_images, images_folder="tmp-images", print_results=print_results, show_progress=show_progress, threshold=args.threshold, show_image_process=show_image_process)
+            results = get_summary(doc, include_images=include_images, images_folder=".ospdf-tmp-images", print_results=print_results, show_progress=show_progress, threshold=args.threshold, show_image_process=show_image_process)
             if docx:
                 save_to_docx(results, output_path)
             elif txt:
@@ -407,8 +381,6 @@ if __name__ == '__main__':
             if not persist_state: 
                 print("Clearing state...")
                 clear_state()
-            else:
-                print("State is preserved.")
 
 
 
@@ -475,20 +447,14 @@ if __name__ == '__main__':
         if not args.start_page and not args.end_page:
             print("Both Start and End Page Cannot be Empty")
             sys.exit(1)
-
-
-
-        # print(f"\nInput PDF: {input_pdf_file}\nOutput PDF: {output_pdf_file}\nStart Page: {args.start_page}\nEnd Page: {args.end_page}\n")
         
         split_pdf(input_pdf_file, output_pdf_file, start_page=start_page, end_page=end_page)
-        print(f"Successfull Split {input_pdf_file} and is saved at {output_pdf_file}")
+        print(f"Successfully Split {input_pdf_file} and is saved at {output_pdf_file}")
 
 
         if not persist_state: 
             print("Clearing state...")
             clear_state()
-        else:
-            print("State is preserved.")
 
 
 
@@ -515,9 +481,6 @@ if __name__ == '__main__':
         if not output_pdf_file.lower().endswith('.pdf'):
             print("Error: The output file must have a `.pdf` extension.")
             sys.exit(1)
-        
-
-        # print(f"\nOutput Pdf Path: {output_pdf_file}\nInput Pdf Paths: {args.input_pdf_files}\n")
 
 
         merge_pdfs(output_pdf_file, *args.input_pdf_files)
@@ -594,4 +557,10 @@ if __name__ == '__main__':
             clear_state()
 
 
-    args.func()
+    else:
+        args.func()
+
+
+
+if __name__ == '__main__':
+    main()

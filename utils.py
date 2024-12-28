@@ -1254,3 +1254,18 @@ def gradient_text(text, colors):
             colored_line += colored_char
         colored_text.append(colored_line)
     return "\n".join(colored_text)
+
+
+
+def check_and_create_folder(folder_name):
+    # Get the current working directory
+    current_directory = os.getcwd()
+    
+    # Define the full path to the folder
+    folder_path = os.path.join(current_directory, folder_name)
+    
+    # Check if the folder exists
+    if not os.path.exists(folder_path):
+        # Create the folder if it doesn't exist
+        os.makedirs(folder_path)
+        print(f"Folder '{folder_name}' created.")
