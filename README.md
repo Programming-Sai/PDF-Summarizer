@@ -14,7 +14,7 @@ The **PDF Summarizer** is a command-line tool designed to help users manage and 
    git clone https://github.com/Programming-Sai/PDF-Summarizer.git
    ```
 
-2. Navigate to the project directory:
+2. Navigate to the project directory
 
    ```bash
    cd PDF-Summarizer
