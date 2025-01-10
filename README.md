@@ -20,13 +20,33 @@ The **PDF Summarizer** tool allows you to manage and summarize PDF files effecti
    cd PDF-Summarizer
    ```
 
-3. Install the Dependencies:
+3. Create a Virtual Environment and activate it.
+
+   ```bash
+   python -m venv .ospdf-venv
+
+   .ospdf-venv\Scripts\activate  # Windows
+
+   OR
+
+   source .ospdf-venv/bin/activate  # MacOS/Linux
+
+   ```
+
+   <br>
+
+> [!IMPORTANT]
+> Make sure to select the new virtual environment `.ospdf-venv` as your interpreter in VS Code. Use the shortcut **`Ctrl + Shift + P`** (Windows/Linux) or **`Cmd + Shift + P`** (Mac), then type and select **"Python: Select Interpreter"**. Choose the interpreter option marked **`Recommended`** or **`Python 3.x.x ('.ospdf-venv':venv)`**.
+
+   <br>
+
+4. Install the Dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Run the installation script:
+5. Run the installation script:
 
    ```bash
    python install.py
@@ -37,7 +57,7 @@ The **PDF Summarizer** tool allows you to manage and summarize PDF files effecti
    - Creates a standalone executable using PyInstaller.
    - Moves the executable to a globally accessible location (e.g., `/usr/local/bin/ospdf` on Unix/Linux).
 
-5. Confirm the installation by checking the tool's availability:
+6. Confirm the installation by checking the tool's availability:
 
    ```bash
    ospdf
