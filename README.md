@@ -35,8 +35,8 @@ The **PDF Summarizer** is a command-line tool designed to help users manage and 
 
    <br>
 
-   > [!NOTE]
-   > Make sure to select the new virtual environment `.ospdf-venv` as your interpreter in VS Code. Use the shortcut **`Ctrl + Shift + P`** (Windows/Linux) or **`Cmd + Shift + P`** (Mac), then type and select **"Python: Select Interpreter"**. Choose the interpreter option marked **`Recommended`** or **`Python 3.x.x ('.ospdf-venv':venv)`**.
+> [!IMPORTANT]
+> Make sure to select the new virtual environment `.ospdf-venv` as your interpreter in VS Code. Use the shortcut **`Ctrl + Shift + P`** (Windows/Linux) or **`Cmd + Shift + P`** (Mac), then type and select **"Python: Select Interpreter"**. Choose the interpreter option marked **`Recommended`** or **`Python 3.x.x ('.ospdf-venv':venv)`**.
 
    <br>
 
