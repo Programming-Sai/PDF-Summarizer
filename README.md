@@ -20,13 +20,32 @@ The **PDF Summarizer** is a command-line tool designed to help users manage and 
    cd PDF-Summarizer
    ```
 
-3. Install the required dependencies:
+3. Create a Virtual Environment and activate it.
+
+   ```bash
+   python -m venv .ospdf-venv
+
+   .ospdf-venv\Scripts\activate  # Windows
+
+   OR
+
+   source .ospdf-venv/bin/activate  # MacOS/Linux
+
+   ```
+
+   <br>
+
+   > **💡 Note:** Make sure to select the new virtual environment `.ospdf-venv` as your interpreter in VS Code. Use the shortcut **`Ctrl + Shift + P`** (Windows/Linux) or **`Cmd + Shift + P`** (Mac), then type and select **"Python: Select Interpreter"**. Choose the interpreter option marked **`Recommended`** or **`Python 3.x.x ('.ospdf-venv':venv)`**.
+
+   <br>
+
+4. Install the required dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Run the application:
+5. Run the application:
 
    ```bash
    python -u main.py
@@ -158,3 +177,7 @@ python main.py pdf2img  <path_to_pdf> <output_image> <page_number>
 - If a command fails, check the help menu for correct syntax.
 
 ---
+
+```
+
+```
