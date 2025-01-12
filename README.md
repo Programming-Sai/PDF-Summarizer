@@ -77,10 +77,6 @@ The **PDF Summarizer** tool allows you to manage and summarize PDF files effecti
 
 ---
 
-Here is the updated and more accurate **Usage** section based on the parameters you provided:
-
----
-
 ## Usage
 
 The **ospdf** command provides the following functionality:
