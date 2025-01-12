@@ -176,9 +176,3 @@ python main.py pdf2img  <path_to_pdf> <output_image> <page_number>
   ```
 
 - If a command fails, check the help menu for correct syntax.
-
----
-
-```
-
-```
